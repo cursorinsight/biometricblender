@@ -1,5 +1,8 @@
 #!/usr/bin/env python
-
+# ------------------------------------------------------------------------------
+# Copyright (C) 2021 The BiometricBlender contributors.
+# SPDX-License-Identifier: MIT
+# ------------------------------------------------------------------------------
 import setuptools
 
 with open("README.md", "r", encoding="utf-8") as fh:
