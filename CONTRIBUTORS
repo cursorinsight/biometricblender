@@ -1,0 +1,11 @@
+# This is the list of BiometricBlender's significant contributors.
+#
+# This does not necessarily list everyone who has contributed code,
+# especially since many employees of one corporation may be contributing.
+# To see the full list of contributors, see the revision history in
+# source control (e.g. execute `git shortlog --summary --numbered --email`).
+
+Marcell Stippinger <stippinger.marcell@wigner.hu>
+Cursor Insight <info@cursorinsight.com>
+Oliver Mate Torteli <oliver@cursorinsight.com>
+David Hanak <david@cursorinsight.com>

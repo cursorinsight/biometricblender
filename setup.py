@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # ------------------------------------------------------------------------------
-# Copyright (C) 2021 The BiometricBlender contributors.
+# Copyright (C) The BiometricBlender contributors
+#
 # SPDX-License-Identifier: MIT
 # ------------------------------------------------------------------------------
 import setuptools
