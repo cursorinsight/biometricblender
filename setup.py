@@ -4,6 +4,7 @@
 #
 # SPDX-License-Identifier: MIT
 # ------------------------------------------------------------------------------
+
 import setuptools
 
 with open("README.md", "r", encoding="utf-8") as fh:
@@ -11,10 +12,12 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setuptools.setup(
     name="biometricblender",
-    version="0.0.1",
+    version="1.0.0",
     author="Marcell Stippinger",
     author_email="stippingerm.prog@gmail.com",
-    description="Ultra-high dimensional,multi-class synthetic data generator to imitatebiometric feature space",
+    description=("BiometricBlender: Ultra-high dimensional, multi-class "
+                 "synthetic data generator to imitate biometric feature "
+                 "space"),
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/cursorinsight/biometricblender",

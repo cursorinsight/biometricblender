@@ -144,3 +144,15 @@ cython_debug/
 
 # End of https://www.toptal.com/developers/gitignore/api/python
 
+### Manual edit
+
+# IntelliJ project files
+.idea
+*.iml
+out
+gen
+
+# Local folders
+**/log/
+**/tmp/
+**/tests/fig
