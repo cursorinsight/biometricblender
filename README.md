@@ -122,7 +122,7 @@ Command line options are:
                         keep segments of locations of given block size 
                         together in each feature independently, use -1 to use 
                         exactly the same location order (default: 0)
-  --average-shared-locations AVERAGE_SHARED_LOCATIONS
+  --location-sharing-extent LOCATION_SHARING_EXTENT
                         make locations shared by multiple labels in each 
                         feature independently, use 0 to make all locations 
                         unique (default: 0)

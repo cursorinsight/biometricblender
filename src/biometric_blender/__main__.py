@@ -62,7 +62,7 @@ if __name__ == '__main__':
                         'together in each feature independently, use -1 to '
                         'use exactly the same location order',
                    default=0, type=int)
-    p.add_argument('--average-shared-locations',
+    p.add_argument('--location-sharing-extent',
                    help='make locations shared by multiple labels in each '
                         'feature independently, use 0 to make all locations '
                         'unique',
