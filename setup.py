@@ -12,7 +12,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setuptools.setup(
     name="biometricblender",
-    version="1.0.0",
+    version="1.0.1",
     author="Marcell Stippinger",
     author_email="stippingerm.prog@gmail.com",
     description=("BiometricBlender: Ultra-high dimensional, multi-class "
