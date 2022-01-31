@@ -266,7 +266,7 @@ class TestMain(TestCase):
                     '--output', 'fig/out_poly.h5']
         runpy.run_module("biometric_blender", run_name='__main__')
         sys.argv = [saved_argv[0], '--location-ordering-extent', '5',
-                    '--output', 'fig/out_ordering.h5']
+                    '--store-hidden', '--output', 'fig/out_ordering.h5']
         runpy.run_module("biometric_blender", run_name='__main__')
         sys.argv = saved_argv
 

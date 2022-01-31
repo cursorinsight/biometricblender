@@ -85,6 +85,9 @@ if __name__ == '__main__':
                    help='maximum number of hidden features taking part in one '
                         'specific output feature',
                    default=10, type=int)
+    p.add_argument('--store-hidden',
+                   help='store the hidden feature space for later analysis',
+                   action='store_true')
     p.add_argument('--random-state',
                    help='integer random seed',
                    default=137, type=int)
@@ -94,6 +97,7 @@ if __name__ == '__main__':
     argspace = p.parse_args()
     generate_args = vars(argspace)
     output_file = generate_args.pop('output')
+    store_hidden = generate_args.pop('store_hidden')
     generate_args_original_copy = generate_args.copy()
     for arg_name in ['location_distribution', 'sampling_distribution']:
         try:
@@ -111,7 +115,8 @@ if __name__ == '__main__':
         raise ValueError(msg)
     generate_args['count_distribution'] = (
         stats.randint(min_count, max_count + 1))
-    out_features, out_labels, out_usefulness, out_names, _, _ = (
+    (out_features, out_labels, out_usefulness, out_names,
+     hidden_features, hidden_usefulness) = (
         generate_feature_space(**generate_args))
     output_file.close()  # close because hdf5 requires file name, not object
     with hdf.File(output_file.name, mode='w') as file:
@@ -119,6 +124,13 @@ if __name__ == '__main__':
         # in other words, laid out on disk in traditional C order. To access
         # all data in a feature a low cost, we store it as
         # (n_features, n_samples).
+        if store_hidden:
+            file['hidden_features'] = hidden_features.transpose()
+            file['hidden_features'].attrs.update({'hidden': True})
+            file['hidden_features'].dims[0].label = 'feature'
+            file['hidden_features'].dims[1].label = 'sample'
+            file['hidden_usefulness'] = hidden_usefulness
+            file['hidden_usefulness'].dims[0].label = 'feature'
         file['features'] = out_features.transpose()
         file['features'].attrs.update(generate_args_original_copy)
         file['features'].dims[0].label = 'feature'
