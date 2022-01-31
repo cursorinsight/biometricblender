@@ -82,7 +82,7 @@ def get_classifiers(seed=4242) -> Iterable[
     from sklearn.svm import SVC
     from sklearn.ensemble import RandomForestClassifier
 
-    yield 'knn', KNeighborsClassifier(random_state=seed)
+    yield 'knn', KNeighborsClassifier()
     yield 'svm', SVC(random_state=seed)
     yield 'rf', RandomForestClassifier(random_state=seed)
 
@@ -282,21 +282,21 @@ def make_figure_accuracy(data):
 
 # # #  Additional figure about the reconstruction capabilities of FA  # # #
 
-def compute_scores_for_n_components(X, est):
+def compute_scores_for_n_components(X, red):
     """
-    Cross validated scores for varying n_components,
+    Cross validated reduction scores for varying n_components,
     this could be a GridSearchCV.
     """
     from sklearn.model_selection import cross_val_score
     from sklearn.base import clone
-    est = clone(est)
+    red = clone(red)
     n_components = np.logspace(0, np.log10(np.minimum(X.shape[1], 200)),
                                num=10)
     n_components = np.unique(n_components.astype(int))
     scores = []
     for n in tqdm(n_components):
-        est.n_components = n
-        scores.append(np.mean(cross_val_score(est, X, cv=3)))
+        red.n_components = n
+        scores.append(np.mean(cross_val_score(red, X, cv=3)))
 
     return n_components, scores
 
@@ -505,10 +505,16 @@ def make_figure_usefulness(seed=137):
 
 # # #  Entry point  # # #
 
-if __name__ == '__main__':
+def main():
+    import os
+    os.makedirs('fig', exist_ok=True)
     print('scoring takes a while...')
     # score_gridsearch_classifiers()
     for data_name in ['true', 'hidden', 'full']:
         make_table_accuracy(data_name)
         make_figure_accuracy(data_name)
     make_figure_usefulness()
+
+
+if __name__ == '__main__':
+    main()
