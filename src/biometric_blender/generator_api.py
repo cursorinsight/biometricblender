@@ -26,7 +26,7 @@ class SegmentShuffle(BaseEstimator, TransformerMixin):
 
     Parameters
     ----------
-    length_dist: int|float|scipy.stats.rv_continuous
+    length_dist: int|float|scipy.stats.rv_continuous|scipy.stats.rv_discrete
         distribution for segment size
     longer: {'end', 'start', 'random', 'distribute'}
         where to place longer block, optional, default 'distribute'
@@ -63,16 +63,25 @@ class SegmentShuffle(BaseEstimator, TransformerMixin):
         else:
             random_state = check_random_state(random_state)
         try:
-            # Take uniform blocks
-            n = int(total_length / length_dist) + 1
-            part = np.full(n, length_dist)
-        except TypeError:
-            # Take twice as many samples as thought sufficient
-            n = int(2 * total_length / length_dist.mean())
-            part = length_dist.rvs(size=n, random_state=random_state
-                                   ).astype(int)
-            part = part[0 < part]
-            n = len(part)
+            if hasattr(length_dist, 'mean') and hasattr(length_dist, 'rvs'):
+                # Take twice as many samples as thought sufficient
+                with np.errstate(divide='ignore'):
+                    # querying randint's higher order stats may issue a warning
+                    mean = length_dist.mean()
+                n = int(2 * total_length / mean)
+                part = length_dist.rvs(size=n, random_state=random_state
+                                       ).astype(int)
+                part = part[0 < part]
+                n = len(part)
+            else:
+                # Take uniform blocks
+                n = int(total_length / length_dist) + 1
+                part = np.full(n, length_dist)
+        except TypeError as e:
+            msg = ('Length_dist must either be a number or be compatible with'
+                   'the scipy.stats distribution API, got instance of %s'
+                   % type(length_dist))
+            raise TypeError(msg) from e
         # Find the sufficient samples
         cum = np.cumsum(part).astype(int)
         trunc = np.searchsorted(cum, total_length, side='right')
@@ -202,9 +211,14 @@ class EffectiveFeature(object):
             reproduction, i.e., the noise for different samples from the same
             label
         :param location_ordering_extent: average number of consecutive
-            locations, use -1 for all locations to be ordered increasingly.
-        :param location_sharing_extent: average number of locations shared by
-            multiple labels, use 0 for none.
+            locations, use 0 for no explicit ordering, use -1 for all
+            locations to be ordered increasingly, use any other negative
+            value to define a fixed number (absolute value, discouraged) of
+            consecutive locations
+        :param location_sharing_extent: average number of labels sharing a
+            common location, use 0 for none, use any negative value to define
+            a fixed number (absolute value, discouraged) of labels sharing a
+            common location
         :param random_state: seed or RandomState instance, use None to
             auto-seed
         """
@@ -236,26 +250,38 @@ class EffectiveFeature(object):
         scaling_for_sampling = (self.extent * location_std
                                 / mean_of_sampling_std)
         if self.location_sharing_extent:
-            seg = SegmentShuffle(self.location_sharing_extent,
-                                 random_state=random_state)
+            if 0 < self.location_sharing_extent:
+                # mean number
+                loc_share = stats.randint(1, 2 * self.location_sharing_extent)
+            else:
+                # exact number (absolute value), discouraged
+                loc_share = -self.location_sharing_extent
+            seg = SegmentShuffle(loc_share, random_state=random_state)
             blocks = seg.get_block_sizes(self.n_labels)
             n_unique_locations = len(blocks)
             assignment = np.zeros(self.n_labels, dtype=int)
             for i, (s, e) in enumerate(seg.get_block_bounds(blocks)):
+                # keep block id ordered, it may be needed for loc. ordering
                 assignment[s:e] = i
         else:
             n_unique_locations = self.n_labels
             assignment = slice(None)
         locations = self.location_distribution.rvs(
             size=n_unique_locations, random_state=random_state)[assignment]
-        if self.location_ordering_extent < 0:
-            self.locations_ = np.sort(locations)
-        elif self.location_ordering_extent == 0:
-            self.locations_ = locations
+        # Note: we could apply ordering based on block id (`assignment[]` <- i)
+        if self.location_ordering_extent == 0:
+            self.locations_ = random_state.permutation(locations)  # unordered
+        elif self.location_ordering_extent == -1:
+            self.locations_ = np.sort(locations)  # fully ordered
         else:
+            if 0 < self.location_ordering_extent:
+                # mean number
+                loc_order = stats.randint(1, 2 * self.location_ordering_extent)
+            else:
+                # exact number (absolute value), discouraged
+                loc_order = -self.location_ordering_extent
             self.locations_ = (
-                SegmentShuffle(self.location_ordering_extent,
-                               random_state=random_state
+                SegmentShuffle(loc_order, random_state=random_state
                                ).fit_transform(np.sort(locations)))
         self.scales_ = scaling_for_sampling * self.scale_distribution.rvs(
             size=self.n_labels, random_state=random_state)
@@ -685,7 +711,7 @@ def blend_features(
     random_state = check_random_state(random_state)
     # todo convert asserts into input validation
     assert 1 <= n_features_out
-    assert 0 <= location_ordering_extent
+    assert (0 <= location_ordering_extent) or (location_ordering_extent == -1)
     assert 0 <= location_sharing_extent
     if polynomial and (blending_mode == 'logarithmic'):
         warnings.warn('Polynomial features do not add complexity '
