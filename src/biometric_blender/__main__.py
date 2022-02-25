@@ -119,6 +119,16 @@ if __name__ == '__main__':
      hidden_features, hidden_usefulness) = (
         generate_feature_space(**generate_args))
     output_file.close()  # close because hdf5 requires file name, not object
+    try:
+        import hashlib
+        # Note: python hash function is salted
+        m = hashlib.sha256()
+        # Note: converting to bytes increases memory need
+        m.update(out_features.tobytes())
+        m.update(out_labels.tobytes())
+        my_hash = m.hexdigest()
+    except Exception:
+        my_hash = 'unavailable'
     with hdf.File(output_file.name, mode='w') as file:
         # An HDF5 dataset created with the default settings will be contiguous;
         # in other words, laid out on disk in traditional C order. To access
@@ -142,5 +152,6 @@ if __name__ == '__main__':
         file['names'] = out_names
         file['names'].dims[0].label = 'feature'
         file['id'] = str(uuid.uuid4())
+        file['hash'] = my_hash
         file['created_at'] = datetime.now().strftime(
             "%Y-%m-%dT%H:%M:%S.%f")[:-3]  # len(%f)==6 always
