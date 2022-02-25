@@ -51,7 +51,19 @@ def make_data(
     yield 'full', kw, fs
 
 
-def get_reduction(n_components=None, seed=4242) -> Iterable[
+def get_data(
+        fn: str = 'out_data.hdf5'
+) -> Iterable[Tuple[str, Dict[str, Any], Tuple[np.ndarray, ...]]]:
+    import h5py as hdf
+    with hdf.File(fn, mode='r') as f:
+        data = (f['features'][...].T, f['labels'][...],
+                f['usefulness'][...], f['names'][...],
+                None, None)
+    yield fn, {}, data
+
+
+def get_reduction(n_components=None, preset=None, preset_only=False,
+                  *, seed=4242) -> Iterable[
     Tuple[str, "sklearn.base.TransformerMixin", int]]:
     """
     Get benchmark reduction algorithms
@@ -62,10 +74,22 @@ def get_reduction(n_components=None, seed=4242) -> Iterable[
     from sklearn.decomposition import PCA, FactorAnalysis
     from sklearn.feature_selection import SelectKBest, f_classif
     from sklearn.preprocessing import FunctionTransformer
+    if preset is not None:
+        preset = np.asarray(preset)
     for n in np.ravel(n_components):
         if n is None:
+            if preset is not None:
+                yield 'preset', FunctionTransformer(
+                    lambda arr: arr[:, preset], validate=True)
+            if preset_only:
+                continue
             yield 'none', FunctionTransformer(), n
         else:
+            if preset is not None:
+                yield 'preset', FunctionTransformer(
+                    lambda arr: arr[:, preset[:n_components]], validate=True)
+            if preset_only:
+                continue
             yield 'kbest', SelectKBest(f_classif, k=n), n
             yield 'pca', PCA(n_components=n, random_state=seed), n
             yield 'fa', FactorAnalysis(n_components=n, rotation='varimax',
@@ -85,6 +109,14 @@ def get_classifiers(seed=4242) -> Iterable[
     yield 'knn', KNeighborsClassifier()
     yield 'svm', SVC(random_state=seed)
     yield 'rf', RandomForestClassifier(random_state=seed)
+    yield 'rf_julcsi', RandomForestClassifier(
+        # no equivalent for n_subfeatures=1000,
+        n_estimators=10000,  # n_trees=10000,
+        max_samples=0.7, bootstrap=True,  # partial_sampling=0.7,
+        min_samples_leaf=2,
+        min_samples_split=8,
+        min_impurity_decrease=0.21,  # min_purity_increase=0.21
+    )
 
 
 def score_classifiers(n_jobs=2):
@@ -95,14 +127,14 @@ def score_classifiers(n_jobs=2):
     from sklearn.model_selection import cross_val_score
     result = {}
     for (red_name, red_obj, red_n), (data_name, data_kw, data_fs) in tqdm(
-            iterprod(get_reduction(n_components=60), make_data()),
+            iterprod(get_reduction(n_components=None), make_data()),
             desc='data&reduction'):
         (out_features, out_labels, out_usefulness, out_names,
          hidden_features, hidden_usefulness) = data_fs
         simplified_features = red_obj.fit_transform(
             out_features, out_labels)
         for (clf_name, clf_obj) in tqdm(
-                get_classifiers(), desc='cfl', leave=False):
+                get_classifiers(), desc='clf', leave=False):
             name = '_'.join([red_name, str(red_n),
                              clf_name, data_name])
             score = cross_val_score(clf_obj, simplified_features,
@@ -111,6 +143,28 @@ def score_classifiers(n_jobs=2):
             print(name, score, flush=True)
     df = pd.DataFrame(result)
     df.to_csv('fig/scores.csv')
+
+
+def score_screening(n_jobs=2):
+    """
+    Score screened data classifiers on the data
+    """
+    from sklearn.model_selection import cross_val_score
+    result = {}
+    selected = pd.read_csv('featuresNames.txt', header=None)
+    data_name, data_kw, data_fs = list(get_data())[-1]
+    (out_features, out_labels, out_usefulness, out_names,
+     hidden_features, hidden_usefulness) = data_fs
+    simplified_features = out_features[:, selected.values[:, 0]]
+    for (clf_name, clf_obj) in tqdm(
+            get_classifiers(), desc='clf', leave=False):
+        name = '_'.join([clf_name, data_name])
+        score = cross_val_score(clf_obj, simplified_features,
+                                out_labels, n_jobs=n_jobs)
+        result[name] = score
+        print(name, score, flush=True)
+    df = pd.DataFrame(result)
+    df.to_csv('fig/screened_scores.csv')
 
 
 def get_gridsearch_classifiers(seed=4242) -> Iterable[
@@ -509,7 +563,9 @@ def main():
     import os
     os.makedirs('fig', exist_ok=True)
     print('scoring takes a while...')
-    # score_gridsearch_classifiers()
+    score_screening()
+    # score_classifiers(n_jobs=4)
+    # score_gridsearch_classifiers(n_jobs=2)
     for data_name in ['true', 'hidden', 'full']:
         make_table_accuracy(data_name)
         make_figure_accuracy(data_name)
