@@ -6,7 +6,7 @@ generated features are. Results are included in the paper.
 """
 import time
 from contextlib import contextmanager
-from typing import Iterable, Tuple, Dict, List, Any
+from typing import Iterable, Tuple, Dict, List, Any, Union
 
 import numpy as np
 import pandas as pd
@@ -21,10 +21,10 @@ from biometric_blender.generator_api import EffectiveFeature
 
 # # #  Gridsearch scores for the table of accuracy  # # #
 
-def make_data(
+def get_data(
         n_labels=100, n_samples_per_label=16, n_true_features=40,
         n_fake_features=160, n_features_out=10000, seed=137
-) -> Iterable[Tuple[str, Dict[str, Any], Tuple[np.ndarray, ...]]]:
+) -> Iterable[Tuple[str, str, Dict[str, Any], Tuple[np.ndarray, ...]]]:
     """
     Generate some test data: true only, hidden only, all output features
     """
@@ -46,20 +46,49 @@ def make_data(
     fs = generate_feature_space(**kw)
     tr = fs[4][:, :n_true_features], fs[1], fs[5], fs[3], fs[4], fs[5]
     hd = fs[4], fs[1], fs[5], fs[3], fs[4], fs[5]
-    yield 'true', kw, tr
-    yield 'hidden', kw, hd
-    yield 'full', kw, fs
+    yield '-', 'true', kw, tr
+    yield '-', 'hidden', kw, hd
+    yield '-', 'full', kw, fs
 
 
-def get_data(
-        fn: str = 'out_data.hdf5'
-) -> Iterable[Tuple[str, Dict[str, Any], Tuple[np.ndarray, ...]]]:
+def make_data(
+    fn_base: str = 'screening'
+):
+    import sys
+    import runpy
+    saved_argv = sys.argv
+    sys.argv = [saved_argv[0], f'@{fn_base}.args',
+                '--output', f'{fn_base}.hdf5']
+    runpy.run_module("biometric_blender", run_name='__main__')
+    sys.argv = saved_argv
+
+
+def read_data(
+        fn: str = 'screening.hdf5'
+) -> Iterable[Tuple[str, str, Dict[str, Any], Tuple[np.ndarray, ...]]]:
     import h5py as hdf
     with hdf.File(fn, mode='r') as f:
+        myhash = f.get('hash', None)[...]
+        kw = dict(f['features'].attrs.items())
         data = (f['features'][...].T, f['labels'][...],
                 f['usefulness'][...], f['names'][...],
                 None, None)
-    yield fn, {}, data
+        if 'hidden_features' in f:
+            n_true_features = kw['n_true_features']
+            true = (f['hidden_features'][:n_true_features].T, f['labels'][...],
+                    f['hidden_usefulness'][:n_true_features],
+                    f['names'][:n_true_features], None, None)
+            hidden = (f['hidden_features'][...].T, f['labels'][...],
+                      f['hidden_usefulness'][...], f['names'][...],
+                      None, None)
+        else:
+            true = None
+            hidden = None
+    print(f'hash of {fn} is {myhash} with', *kw.items(), sep='\n', end='\n\n')
+    if hidden is not None:
+        yield fn, 'true', {}, true
+        yield fn, 'hidden', {}, hidden
+    yield fn, 'full', kw, data
 
 
 def get_reduction(n_components=None, preset=None, preset_only=False,
@@ -109,25 +138,32 @@ def get_classifiers(seed=4242) -> Iterable[
     yield 'knn', KNeighborsClassifier()
     yield 'svm', SVC(random_state=seed)
     yield 'rf', RandomForestClassifier(random_state=seed)
-    yield 'rf_julcsi', RandomForestClassifier(
+    yield 'rf_david', RandomForestClassifier(
         # no equivalent for n_subfeatures=1000,
         n_estimators=10000,  # n_trees=10000,
         max_samples=0.7, bootstrap=True,  # partial_sampling=0.7,
         min_samples_leaf=2,
         min_samples_split=8,
-        min_impurity_decrease=0.21,  # min_purity_increase=0.21
+        min_impurity_decrease=0.1,  # min_purity_increase=0.1
     )
 
 
-def score_classifiers(n_jobs=2):
+def score_classifiers(fn_base: Union[str, dict] = 'screening.hdf5', n_jobs=2):
     """
     Score benchmark classifiers on the data
     """
     from itertools import product as iterprod
     from sklearn.model_selection import cross_val_score
     result = {}
-    for (red_name, red_obj, red_n), (data_name, data_kw, data_fs) in tqdm(
-            iterprod(get_reduction(n_components=None), make_data()),
+    if isinstance(fn_base, str):
+        data = read_data(f'{fn_base}.hdf5')
+        output = f'{fn_base}_scores.csv'
+    else:
+        data = get_data(**fn_base)
+        output = 'fig/scores.csv'
+    for (red_name, red_obj, red_n), \
+        (data_fn, data_kind, data_kw, data_fs) in tqdm(
+            iterprod(get_reduction(n_components=None), data),
             desc='data&reduction'):
         (out_features, out_labels, out_usefulness, out_names,
          hidden_features, hidden_usefulness) = data_fs
@@ -136,35 +172,35 @@ def score_classifiers(n_jobs=2):
         for (clf_name, clf_obj) in tqdm(
                 get_classifiers(), desc='clf', leave=False):
             name = '_'.join([red_name, str(red_n),
-                             clf_name, data_name])
+                             clf_name, data_kind])
             score = cross_val_score(clf_obj, simplified_features,
                                     out_labels, n_jobs=n_jobs)
             result[name] = score
             print(name, score, flush=True)
     df = pd.DataFrame(result)
-    df.to_csv('fig/scores.csv')
+    df.to_csv(output)
 
 
-def score_screening(n_jobs=2):
+def score_screening(fn_base: str = 'screening', n_jobs=2):
     """
     Score screened data classifiers on the data
     """
     from sklearn.model_selection import cross_val_score
     result = {}
-    selected = pd.read_csv('featuresNames.txt', header=None)
-    data_name, data_kw, data_fs = list(get_data())[-1]
+    selected = pd.read_csv(f'{fn_base}_featuresNames.txt', header=None)
+    data_fn, data_kind, data_kw, data_fs = list(read_data(f'{fn_base}.hdf5'))[-1]
     (out_features, out_labels, out_usefulness, out_names,
      hidden_features, hidden_usefulness) = data_fs
     simplified_features = out_features[:, selected.values[:, 0]]
     for (clf_name, clf_obj) in tqdm(
             get_classifiers(), desc='clf', leave=False):
-        name = '_'.join([clf_name, data_name])
+        name = '_'.join([clf_name, data_kind])
         score = cross_val_score(clf_obj, simplified_features,
                                 out_labels, n_jobs=n_jobs)
         result[name] = score
         print(name, score, flush=True)
     df = pd.DataFrame(result)
-    df.to_csv('fig/screened_scores.csv')
+    df.to_csv(f'{fn_base}_screened_scores.csv')
 
 
 def get_gridsearch_classifiers(seed=4242) -> Iterable[
@@ -192,16 +228,24 @@ def get_gridsearch_classifiers(seed=4242) -> Iterable[
     }
 
 
-def score_gridsearch_classifiers(n_jobs=4):
+def score_gridsearch_classifiers(fn_base: Union[str, dict] = 'screening.hdf5',
+                                 n_jobs=4):
     """
     Score benchmark classifiers with various parametrization on the data
     """
     from itertools import product as iterprod
     from sklearn.model_selection import GridSearchCV
     result = []
-    n_components = [None, 10, 25, 50, 100, 200, 400, 800]
-    for (red_name, red_obj, red_n), (data_name, data_kw, data_fs) in tqdm(
-            iterprod(get_reduction(n_components=n_components), make_data()),
+    n_components = [None, 10]  # TODO [None, 10, 25, 50, 100, 200, 400, 800]
+    if isinstance(fn_base, str):
+        data = read_data(f'{fn_base}.hdf5')
+        output = f'{fn_base}_gridsearch_scores.csv'
+    else:
+        data = get_data(**fn_base)
+        output = 'fig/gridsearch_scores.csv'
+    for (red_name, red_obj, red_n),\
+        (data_fn, data_kind, data_kw, data_fs) in tqdm(
+            iterprod(get_reduction(n_components=n_components), data),
             desc='data&reduction'):
         (out_features, out_labels, out_usefulness, out_names,
          hidden_features, hidden_usefulness) = data_fs
@@ -221,23 +265,24 @@ def score_gridsearch_classifiers(n_jobs=4):
             df['reduction_time'] = red_time
             df['n_components'] = red_n
             df['classifier'] = clf_name
-            df['data'] = data_name
+            df['data_fn'] = data_fn
+            df['data_kind'] = data_kind
             result.append(df)
-            pd.concat(result).to_csv('fig/gridsearch.csv')
+            pd.concat(result).to_csv(output)
 
 
-def make_table_accuracy(data):
+def make_table_accuracy(fn_base: str, data_kind: str):
     """
-    Find best parametrization from stored scores
+    Find the best parametrization from stored scores
     (write out TeX tables presented in the paper)
     """
-    df = pd.read_csv('fig/gridsearch.csv')
+    df = pd.read_csv(f'{fn_base}.csv')
     outcome = df.sort_values(
         'mean_test_score', ascending=False
     ).drop_duplicates(
-        ['data', 'classifier', 'reduction', ]
+        ['data_kind', 'classifier', 'reduction', ]
     )
-    q = "data=='{}'".format(data)
+    q = f"data_kind=='{data_kind}'"
     tmp = outcome.query(q).set_index(['classifier', 'reduction'])
     columns = ['none', 'pca', 'fa', 'kbest']
     rows = ['knn', 'svm', 'rf']
@@ -246,31 +291,31 @@ def make_table_accuracy(data):
     tmp.loc[:, 'mean_test_score'].unstack('reduction').round(3).reindex(
         index=rows, columns=columns).rename(
         index=new_rows, columns=new_columns).to_latex(
-        f'fig/score-{data}.tex')
+        f'{fn_base}-score-{data_kind}.tex')
     tmp.loc[:, 'mean_fit_time'].unstack('reduction').reindex(
         index=rows, columns=columns).rename(
         index=new_rows, columns=new_columns).to_latex(
-        f'fig/time-fit-{data}.tex')
+        f'{fn_base}-time-fit-{data_kind}.tex')
     tmp.loc[:, 'reduction_time'].unstack('reduction').reindex(
         index=rows, columns=columns).rename(
         index=new_rows, columns=new_columns).to_latex(
-        f'fig/time-red-{data}.tex')
+        f'{fn_base}-time-red-{data_kind}.tex')
     pass
 
 
-def make_figure_accuracy(data):
+def make_figure_accuracy(fn_base: str, data_kind: str):
     """
     Make figure from stored scores as a function of n_components
     (from the various parametrizations only the best score is kept)
     """
     from matplotlib import pyplot as plt
-    df = pd.read_csv('fig/gridsearch.csv')
+    df = pd.read_csv(f'{fn_base}.csv')
     outcome = df.sort_values(
         'mean_test_score', ascending=False
     ).drop_duplicates(
         ['data', 'classifier', 'reduction', 'n_components', ]
     )
-    outcome.to_excel('fig/outcome.xlsx')
+    outcome.to_excel(f'{fn_base}_outcome.xlsx')
     reduction = list(o for o in outcome.reduction.unique() if o != 'none')
     if not len(reduction):
         reduction = ['none']
@@ -280,11 +325,11 @@ def make_figure_accuracy(data):
         ax[0, i].set_title(red)
         ax[0, i].semilogx()
         for clf in outcome.classifier.unique():
-            q = "reduction=='{}' & classifier=='{}' & data=='{}'".format(
-                red, clf, data)
+            q = "reduction=='{}' & classifier=='{}' & data_kind=='{}'".format(
+                red, clf, data_kind)
             meas = outcome.query(q).sort_values('n_components')
-            q = "reduction=='{}' & classifier=='{}' & data=='{}'".format(
-                'none', clf, data)
+            q = "reduction=='{}' & classifier=='{}' & data_kind=='{}'".format(
+                'none', clf, data_kind)
             ref = outcome.query(q).iloc[0, :]
             # top row: score
             l0, = ax[0, i].plot(meas['n_components'],
@@ -330,7 +375,7 @@ def make_figure_accuracy(data):
     ax[1, 0].set_ylabel('fit time')
     ax[2, 0].set_ylabel('reduction time')
     ax[-1, 0].set_xlabel('reduction n_components')
-    fig.savefig(f'fig/gridsearch-{data}.pdf')
+    fig.savefig(f'{fn_base}_figure.pdf')
     plt.show()
 
 
@@ -362,7 +407,7 @@ def plot_factor_analysis_reconstruction():
     """
     from sklearn.decomposition import FactorAnalysis
     from scipy.stats import spearmanr
-    for name, kw, fs in make_data(n_fake_features=40):
+    for name, kw, fs in get_data(n_fake_features=40):
         (out_features, out_labels, out_usefulness, out_names,
          hidden_features, hidden_usefulness) = fs
         sorter = np.argsort(hidden_usefulness)[::-1]  # decreasing
@@ -559,18 +604,28 @@ def make_figure_usefulness(seed=137):
 
 # # #  Entry point  # # #
 
-def main():
+def main(fn_base: str):
+    # # prerequisites # #
     import os
     os.makedirs('fig', exist_ok=True)
     print('scoring takes a while...')
-    score_screening()
-    # score_classifiers(n_jobs=4)
-    # score_gridsearch_classifiers(n_jobs=2)
-    for data_name in ['true', 'hidden', 'full']:
-        make_table_accuracy(data_name)
-        make_figure_accuracy(data_name)
+    if fn_base == '':
+        pass
+    make_data(fn_base)
+
+    # # simple scoring # #
+    # score_screening(f'{fn_base}.hdf5')
+    score_classifiers(fn_base, n_jobs=4)
+
+    # # gridsearch # #
+    score_gridsearch_classifiers(fn_base, n_jobs=2)
+    for data_kind in ['true', 'hidden', 'full']:
+        make_table_accuracy(fn_base, data_kind)
+        make_figure_accuracy(fn_base, data_kind)
+
+    # # supplementary # #
     make_figure_usefulness()
 
 
 if __name__ == '__main__':
-    main()
+    main('screening')
