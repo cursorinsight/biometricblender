@@ -236,7 +236,7 @@ def score_gridsearch_classifiers(fn_base: Union[str, dict] = 'screening.hdf5',
     from itertools import product as iterprod
     from sklearn.model_selection import GridSearchCV
     result = []
-    n_components = [None, 10]  # TODO [None, 10, 25, 50, 100, 200, 400, 800]
+    n_components = [None, 10, 25, 50, 100, 200, 400, 800]
     if isinstance(fn_base, str):
         data = read_data(f'{fn_base}.hdf5')
         output = f'{fn_base}_gridsearch_scores.csv'
@@ -276,7 +276,7 @@ def make_table_accuracy(fn_base: str, data_kind: str):
     Find the best parametrization from stored scores
     (write out TeX tables presented in the paper)
     """
-    df = pd.read_csv(f'{fn_base}.csv')
+    df = pd.read_csv(f'{fn_base}_gridsearch_scores.csv')
     outcome = df.sort_values(
         'mean_test_score', ascending=False
     ).drop_duplicates(
@@ -309,11 +309,11 @@ def make_figure_accuracy(fn_base: str, data_kind: str):
     (from the various parametrizations only the best score is kept)
     """
     from matplotlib import pyplot as plt
-    df = pd.read_csv(f'{fn_base}.csv')
+    df = pd.read_csv(f'{fn_base}_gridsearch_scores.csv')
     outcome = df.sort_values(
         'mean_test_score', ascending=False
     ).drop_duplicates(
-        ['data', 'classifier', 'reduction', 'n_components', ]
+        ['data_kind', 'classifier', 'reduction', 'n_components', ]
     )
     outcome.to_excel(f'{fn_base}_outcome.xlsx')
     reduction = list(o for o in outcome.reduction.unique() if o != 'none')
