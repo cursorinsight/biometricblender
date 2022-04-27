@@ -6,7 +6,7 @@ generated features are. Results are included in the paper.
 """
 import time
 from contextlib import contextmanager
-from typing import Iterable, Tuple, Dict, List, Any, Union
+from typing import Iterable, Tuple, Dict, List, Any, Union, Optional, Sequence
 
 import numpy as np
 import pandas as pd
@@ -54,6 +54,9 @@ def get_data(
 def make_data(
     fn_base: str = 'screening'
 ):
+    """
+    Write some test data: use the default configuration
+    """
     import sys
     import runpy
     saved_argv = sys.argv
@@ -66,6 +69,9 @@ def make_data(
 def read_data(
         fn: str = 'screening.hdf5'
 ) -> Iterable[Tuple[str, str, Dict[str, Any], Tuple[np.ndarray, ...]]]:
+    """
+    Read data from file: if available, true only, hidden only, all features
+    """
     import h5py as hdf
     with hdf.File(fn, mode='r') as f:
         myhash = f.get('hash', None)[...]
@@ -148,7 +154,9 @@ def get_classifiers(seed=4242) -> Iterable[
     )
 
 
-def score_classifiers(fn_base: Union[str, dict] = 'screening.hdf5', n_jobs=2):
+def score_classifiers(fn_base: Union[str, dict] = 'screening',
+                      output_fn: Optional[str] = None,
+                      n_jobs: int = 2):
     """
     Score benchmark classifiers on the data
     """
@@ -156,14 +164,14 @@ def score_classifiers(fn_base: Union[str, dict] = 'screening.hdf5', n_jobs=2):
     from sklearn.model_selection import cross_val_score
     result = {}
     if isinstance(fn_base, str):
-        data = read_data(f'{fn_base}.hdf5')
-        output = f'{fn_base}_scores.csv'
+        data_fn = read_data(f'{fn_base}.hdf5')
+        output_fn = output_fn or f'{fn_base}_scores.csv'
     else:
-        data = get_data(**fn_base)
-        output = 'fig/scores.csv'
+        data_fn = get_data(**fn_base)
+        output_fn = output_fn or 'fig/scores.csv'
     for (red_name, red_obj, red_n), \
         (data_fn, data_kind, data_kw, data_fs) in tqdm(
-            iterprod(get_reduction(n_components=None), data),
+            iterprod(get_reduction(n_components=None), data_fn),
             desc='data&reduction'):
         (out_features, out_labels, out_usefulness, out_names,
          hidden_features, hidden_usefulness) = data_fs
@@ -177,30 +185,40 @@ def score_classifiers(fn_base: Union[str, dict] = 'screening.hdf5', n_jobs=2):
                                     out_labels, n_jobs=n_jobs)
             result[name] = score
             print(name, score, flush=True)
-    df = pd.DataFrame(result)
-    df.to_csv(output)
+            # output after each round
+            df = pd.DataFrame(result)
+            df.to_csv(output_fn)
 
 
-def score_screening(fn_base: str = 'screening', n_jobs=2):
+def score_screening(  # todo score_gridsearch_screening
+        fn_base: str = 'screening',
+        importances_fn: str = 'feature_names.txt',
+        output_fn: Optional[str] = None,
+        n_components: Sequence[int] = (10, 25, 50, 100, 200, 400, 800),
+        n_jobs: int = 2):
     """
-    Score screened data classifiers on the data
+    Score classifiers on the screened data. First feature id is 1 opposed to 0.
     """
     from sklearn.model_selection import cross_val_score
+    output_fn = output_fn or f'{fn_base}_screened_scores.csv'
     result = {}
-    selected = pd.read_csv(f'{fn_base}_featuresNames.txt', header=None)
     data_fn, data_kind, data_kw, data_fs = list(read_data(f'{fn_base}.hdf5'))[-1]
     (out_features, out_labels, out_usefulness, out_names,
      hidden_features, hidden_usefulness) = data_fs
-    simplified_features = out_features[:, selected.values[:, 0]]
-    for (clf_name, clf_obj) in tqdm(
-            get_classifiers(), desc='clf', leave=False):
-        name = '_'.join([clf_name, data_kind])
-        score = cross_val_score(clf_obj, simplified_features,
-                                out_labels, n_jobs=n_jobs)
-        result[name] = score
-        print(name, score, flush=True)
-    df = pd.DataFrame(result)
-    df.to_csv(f'{fn_base}_screened_scores.csv')
+    importances = pd.read_csv(
+        importances_fn, sep=';', header=None, names=['feature', 'count'])
+    for red_n in tqdm(n_components, desc='reduction'):
+        important_features = out_features[:, importances.values[:red_n, 0] - 1]
+        for (clf_name, clf_obj) in tqdm(
+                get_classifiers(), desc='clf', leave=False):
+            name = '_'.join([str(red_n), clf_name, data_kind])
+            score = cross_val_score(clf_obj, important_features,
+                                    out_labels, n_jobs=n_jobs)
+            result[name] = score
+            print(name, score, flush=True)
+            # output after each round
+            df = pd.DataFrame(result)
+            df.to_csv(output_fn)
 
 
 def get_gridsearch_classifiers(seed=4242) -> Iterable[
@@ -228,21 +246,23 @@ def get_gridsearch_classifiers(seed=4242) -> Iterable[
     }
 
 
-def score_gridsearch_classifiers(fn_base: Union[str, dict] = 'screening.hdf5',
-                                 n_jobs=4):
+def score_gridsearch_classifiers(
+        fn_base: Union[str, dict] = 'screening',
+        output_fn: Optional[str] = None,
+        n_components: Sequence[int] = (None, 10, 25, 50, 100, 200, 400, 800),
+        n_jobs: int = 4):
     """
     Score benchmark classifiers with various parametrization on the data
     """
     from itertools import product as iterprod
     from sklearn.model_selection import GridSearchCV
     result = []
-    n_components = [None, 10, 25, 50, 100, 200, 400, 800]
     if isinstance(fn_base, str):
         data = read_data(f'{fn_base}.hdf5')
-        output = f'{fn_base}_gridsearch_scores.csv'
+        output_fn = output_fn or f'{fn_base}_gridsearch_scores.csv'
     else:
         data = get_data(**fn_base)
-        output = 'fig/gridsearch_scores.csv'
+        output_fn = output_fn or 'fig/gridsearch_scores.csv'
     for (red_name, red_obj, red_n),\
         (data_fn, data_kind, data_kw, data_fs) in tqdm(
             iterprod(get_reduction(n_components=n_components), data),
@@ -268,7 +288,8 @@ def score_gridsearch_classifiers(fn_base: Union[str, dict] = 'screening.hdf5',
             df['data_fn'] = data_fn
             df['data_kind'] = data_kind
             result.append(df)
-            pd.concat(result).to_csv(output)
+            # output after each round
+            pd.concat(result).to_csv(output_fn)
 
 
 def make_table_accuracy(fn_base: str, data_kind: str):
@@ -604,28 +625,62 @@ def make_figure_usefulness(seed=137):
 
 # # #  Entry point  # # #
 
-def main(fn_base: str):
+def main(demo: bool,
+         generate: bool,
+         fn_base: str,
+         *,
+         gridsearch: bool = True,
+         importances_fn: Optional[str] = None,
+         output_fn: Optional[str] = None,
+         ):
     # # prerequisites # #
     import os
     os.makedirs('fig', exist_ok=True)
-    print('scoring takes a while...')
-    if fn_base == '':
-        pass
-    make_data(fn_base)
+
+    if demo:
+        make_slides_usefulness()
+        make_figure_usefulness()
+
+    if generate:
+        print('generating...', flush=True)
+        make_data(fn_base)
 
     # # simple scoring # #
-    # score_screening(f'{fn_base}.hdf5')
-    score_classifiers(fn_base, n_jobs=4)
+    # score_classifiers(fn_base, output_fn=None, n_jobs=4)
+
+    if importances_fn:
+        # we provide a different output for each importance instance,
+        # however, this output shall not be used for other methods
+        score_screening(fn_base, importances_fn=importances_fn,
+                        output_fn=output_fn)
 
     # # gridsearch # #
-    score_gridsearch_classifiers(fn_base, n_jobs=2)
-    for data_kind in ['true', 'hidden', 'full']:
-        make_table_accuracy(fn_base, data_kind)
-        make_figure_accuracy(fn_base, data_kind)
+    if gridsearch:
+        print('scoring takes a while...', flush=True)
+        score_gridsearch_classifiers(fn_base, output_fn=None, n_jobs=2)
+        print('summarizing...', flush=True)
+        for data_kind in ['true', 'hidden', 'full']:
+            make_table_accuracy(fn_base, data_kind)
+            make_figure_accuracy(fn_base, data_kind)
 
-    # # supplementary # #
-    make_figure_usefulness()
+        # # supplementary # #
+        make_figure_usefulness()
+
+
+def cli():
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--demo', action='store_true')
+    parser.add_argument('--generate', action='store_true')
+    parser.add_argument('--gridsearch', action='store_true')
+    parser.add_argument('--fn_base', type=str, default='screening')
+    parser.add_argument('--importances_fn', type=str, default=None)
+    parser.add_argument('--output_fn', type=str, default=None)  # screening!
+    args = parser.parse_args()
+    main(demo=args.demo, generate=args.generate, gridsearch=args.gridsearch,
+         fn_base=args.fn_base, importances_fn=args.importances_fn,
+         output_fn=args.output_fn)
 
 
 if __name__ == '__main__':
-    main('screening')
+    cli()
