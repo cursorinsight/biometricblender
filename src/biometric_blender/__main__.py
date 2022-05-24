@@ -127,6 +127,7 @@ if __name__ == '__main__':
         m.update(out_features.tobytes())
         m.update(out_labels.tobytes())
         my_hash = m.hexdigest()
+        print(f'Generated features with hash {my_hash}')
     except Exception:
         my_hash = 'unavailable'
     with hdf.File(output_file.name, mode='w') as file:

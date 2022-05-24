@@ -673,7 +673,7 @@ def generate_hidden_features(
         features[..., i], labels = ef.get_samples(
             n_samples_per_label,
             random_state=random_state)
-    features = features.reshape((-1, features.shape[-1]))
+    features = features.reshape((-1, features.shape[-1])).round(10)
     labels = labels.reshape((-1,))
     return features, labels, usefulness_values, ranges
 
@@ -693,7 +693,7 @@ def blend_features(
         relative_usefulness_content: stats.rv_continuous,
         noise_distribution: stats.rv_continuous,
         random_state: _RANDOM_STATE_TYPE
-) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray,]:
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, ]:
     """
     Create a high dimensional feature space from the low-dimensional input
 
@@ -745,7 +745,7 @@ def blend_features(
     beta = relative_usefulness_content.rvs(size=n_features_out,
                                            random_state=random_state)
     assert np.all(0 <= beta) and np.all(beta <= 1)
-    out_features = nb.fit_transform(mixed_features, beta)
+    out_features = nb.fit_transform(mixed_features, beta).round(10)
     out_usefulness = nb.transform([mixed_usefulness], amplitude_like=True)[0]
     out_labels = labels
     return out_features, out_labels, out_usefulness, mixed_ranges
