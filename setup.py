@@ -12,7 +12,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setuptools.setup(
     name="biometricblender",
-    version="1.1.0",
+    version="1.1.1",
     author="Marcell Stippinger",
     author_email="stippingerm.prog@gmail.com",
     description=("BiometricBlender: Ultra-high dimensional, multi-class "
@@ -35,5 +35,6 @@ setuptools.setup(
     install_requires=['h5py>=2.10',
                       'numpy>=1.18',
                       'scipy>=1.6',
-                      'scikit-learn>=0.24']
+                      'scikit-learn>=0.24',
+                      'pytest>=7.1']
 )
