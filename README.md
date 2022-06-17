@@ -1,5 +1,7 @@
 # BiometricBlender
 
+[![CI](https://github.com/cursorinsight/biometricblender/actions/workflows/CI.yaml/badge.svg)](https://github.com/cursorinsight/biometricblender/actions/workflows/CI.yaml)
+
 Python package for generating synthetic data.
 
 ## How to install
