@@ -1,7 +1,7 @@
 """
 The purpose of this module is to evaluate a feature set using a random forest
 
-@author: Stippinger
+:author: Stippinger
 """
 import numpy as np
 from sklearn.ensemble import RandomForestClassifier
@@ -10,7 +10,7 @@ from sklearn.tree import DecisionTreeClassifier
 
 def forest_decision_feature_importance(
         rf: RandomForestClassifier
-        ) -> np.ndarray:
+) -> np.ndarray:
     """
     Extract occurrence-count in decision based feature importances
     from a fitted forest

@@ -1,7 +1,7 @@
 """
 The purpose of this module is to generate a plausible random feature set
 
-@author: Stippinger
+:author: Stippinger
 """
 
 import argparse

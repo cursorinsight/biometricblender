@@ -1,7 +1,7 @@
 """
 The purpose of this test set is to test all aspects of feature generation.
 
-@author: Stippinger
+:author: Stippinger
 """
 
 from unittest import TestCase
@@ -120,7 +120,6 @@ class TestGenerator(TestCase):
                       ):
         from biometric_blender import generate_feature_space
         from scipy.stats import randint, uniform
-
 
         kw = dict(n_labels=n_labels,
                   n_samples_per_label=n_samples_per_label,
