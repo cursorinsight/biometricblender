@@ -2,7 +2,7 @@
 The purpose of this module is to generate ultra-high dimensional, multi-class
 synthetic data to imitate biometric feature space
 
-@author: Stippinger
+:author: Stippinger
 """
 
 import uuid

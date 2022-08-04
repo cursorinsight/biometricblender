@@ -1,11 +1,11 @@
 """
 The purpose of this module is to generate a plausible random feature set
 
-@author: Stippinger
+:author: Stippinger
 """
 
 import warnings
-from typing import Union, Tuple, Iterable
+from typing import Union, Tuple, Iterable, Sequence
 
 import numpy as np
 from numpy.random import RandomState
@@ -23,18 +23,23 @@ _MSG_INVALID_BLENDING = ("Invalid blending mode, choose from "
 class SegmentShuffle(BaseEstimator, TransformerMixin):
     """
     Transformer class that allows shuffling blocks
-
-    Parameters
-    ----------
-    length_dist: int|float|scipy.stats.rv_continuous|scipy.stats.rv_discrete
-        distribution for segment size
-    longer: {'end', 'start', 'random', 'distribute'}
-        where to place longer block, optional, default 'distribute'
-    random_state: np.random.RandomState
-        source of randomness
     """
 
-    def __init__(self, length_dist, longer='distribute', random_state=None):
+    def __init__(
+            self,
+            length_dist: Union[
+                int, float, stats.rv_continuous, stats.rv_discrete],
+            longer: str = 'distribute',
+            random_state: Union[np.random.RandomState, None] = None):
+        """
+        :param length_dist:
+          distribution for segment size
+        :param longer: where to place longer block:
+          {'end', 'start', 'random', 'distribute'}, optional,
+          default: 'distribute'
+        :param random_state: seed or RandomState instance, use None to
+          auto-seed
+        """
         self.length_dist = length_dist
         self.longer = longer
         self.random_state = random_state
@@ -44,18 +49,20 @@ class SegmentShuffle(BaseEstimator, TransformerMixin):
         return self
 
     def get_block_sizes(self, total_length, longer='distribute',
-                        random_state=None):
+                        random_state=None) -> np.ndarray:
         """
         Get random block sizes.
 
-        Note: One element may be out of the given distribution
-              (because the remainder got added to it).
+        Notes:
+          One element may be out of the given distribution
+          (because the remainder got added to it).
 
         :param int total_length: data length
         :param str longer: where to place longer block
-            {'end', 'start', 'random', 'distribute'}
+          {'end', 'start', 'random', 'distribute'}, optional,
+          default: 'distribute'
         :param np.random.RandomState random_state:
-        :return np.ndarray: block sizes
+        :return np.ndarray[int]: block sizes
         """
         length_dist = self.length_dist
         if random_state is None:
@@ -118,7 +125,7 @@ class SegmentShuffle(BaseEstimator, TransformerMixin):
         return part
 
     @staticmethod
-    def get_block_bounds(block_sizes):
+    def get_block_bounds(block_sizes: Sequence[int]) -> np.ndarray:
         n_blocks = len(block_sizes)
         bounds = np.zeros((n_blocks, 2), dtype=int)
         bounds[:, 1] = np.cumsum(block_sizes)
@@ -154,73 +161,71 @@ class EffectiveFeature(object):
     Class to simulate a standalone hidden feature that is effective
     in label identification
 
-    Attributes:
-    -----------
-    locations_: np.ndarray[float]
-        the characteristic trait of labels, i.e., location of the feature value
-        for specific labels, shape (n_labels, )
-    scales_: np.ndarray[float]
-        the amplitude of the sampling noise (uncertainty of reproduction),
-        i.e., scale of different samples for the same label, shape (n_labels, )
-    range_: float
-        the approximate scale of the feature in the population, i.e., the scale
-        of the locations plus the scale of the sampling noise
+    :ivar np.ndarray[float] locations_:
+      the characteristic trait of labels, i.e., location of the feature value
+      for specific labels, shape (n_labels, )
+    :ivar np.ndarray[float] scales_:
+      the amplitude of the sampling noise (uncertainty of reproduction),
+      i.e., scale of different samples for the same label, shape (n_labels, )
+    :ivar float range_:
+      the approximate scale of the feature in the population, i.e., the scale
+      of the locations plus the scale of the sampling noise
     """
 
-    def __init__(self, n_labels: int, extent: float,
-                 location_distribution: stats.rv_continuous = stats.norm,
-                 scale_distribution: stats.rv_continuous = stats.uniform(0.5,
-                                                                         1.0),
-                 sampling_distribution: stats.rv_continuous = stats.norm,
-                 location_ordering_extent: int = 0,
-                 location_sharing_extent: int = 0,
-                 random_state: _RANDOM_STATE_TYPE = None):
+    def __init__(
+            self,
+            n_labels: int,
+            extent: float,
+            location_distribution: stats.rv_continuous = stats.norm,
+            scale_distribution: stats.rv_continuous = stats.uniform(0.5, 1.0),
+            sampling_distribution: stats.rv_continuous = stats.norm,
+            location_ordering_extent: int = 0,
+            location_sharing_extent: int = 0,
+            random_state: _RANDOM_STATE_TYPE = None):
         """
         Class to simulate one feature that is effective in label identification
 
         Notes:
-        ------
-        One can use higher values for `location_ordering_extent` and
-        `location_sharing_extent` to implicitly increase correlation between
-        standalone hidden features.
+          One can use higher values for `location_ordering_extent` and
+          `location_sharing_extent` to implicitly increase correlation between
+          standalone hidden features.
 
         Examples:
-        ---------
-            * location_distribution:
-                * constrained: uniform, beta,
-                * unconstrained: normal, pareto (heavy-tailed)
-            * sampling_distribution:
-                * constrained: uniform
-                * unconstrained: normal, cauchy
-            * scale_distribution:
-                * constrained: uniform, beta, >0
-                * unconstrained: exponential, pareto (heavy-tailed) > 0
+          * location_distribution:
+            * constrained: uniform, beta,
+            * unconstrained: normal, pareto (heavy-tailed)
+          * sampling_distribution:
+            * constrained: uniform
+            * unconstrained: normal, cauchy
+          * scale_distribution:
+            * constrained: uniform, beta, >0
+            * unconstrained: exponential, pareto (heavy-tailed) > 0
 
         :param n_labels: number of labels
         :param extent: average extent of label traits in the feature,
-            interpreted as a multiple of standard deviation of the location
-            distribution, advised values lie between 0.01 and 10
+          interpreted as a multiple of standard deviation of the location
+          distribution, advised values lie between 0.01 and 10
         :param location_distribution: distribution type of the characteristic
-            trait of labels, i.e., location of the feature value for specific
-            labels (`location` parameter to `sampling_distribution˙)
+          trait of labels, i.e., location of the feature value for specific
+          labels (`location` parameter to `sampling_distribution˙)
         :param scale_distribution: frozen pre-parametrized distribution of
-            the amplitude of the sampling noise (uncertainty of reproduction),
-            i.e., scale of different samples for the same label (`scale`
-            parameter to `sampling_distribution˙)
+          the amplitude of the sampling noise (uncertainty of reproduction),
+          i.e., scale of different samples for the same label (`scale`
+          parameter to `sampling_distribution˙)
         :param sampling_distribution: distribution type of the uncertainty of
-            reproduction, i.e., the noise for different samples from the same
-            label
+          reproduction, i.e., the noise for different samples from the same
+          label
         :param location_ordering_extent: average number of consecutive
-            locations, use 0 for no explicit ordering, use -1 for all
-            locations to be ordered increasingly, use any other negative
-            value to define a fixed number (absolute value, discouraged) of
-            consecutive locations
+          locations, use 0 for no explicit ordering, use -1 for all
+          locations to be ordered increasingly, use any other negative
+          value to define a fixed number (absolute value, discouraged) of
+          consecutive locations
         :param location_sharing_extent: average number of labels sharing a
-            common location, use 0 for none, use any negative value to define
-            a fixed number (absolute value, discouraged) of labels sharing a
-            common location
+          common location, use 0 for none, use any negative value to define
+          a fixed number (absolute value, discouraged) of labels sharing a
+          common location
         :param random_state: seed or RandomState instance, use None to
-            auto-seed
+          auto-seed
         """
         self.n_labels = n_labels
         self.extent = extent
@@ -238,7 +243,7 @@ class EffectiveFeature(object):
         Set the parameters for sample generation
 
         :param random_state: seed or RandomState instance, use None to
-            instance-default
+          instance-default
         :return: self: EffectiveFeature
         """
         if random_state is None:
@@ -295,16 +300,15 @@ class EffectiveFeature(object):
         Generate samples
 
         Notes:
-        ------
-        You might want to flatten the output arrays
+          You might want to flatten the output arrays
 
         :param n_samples_per_label: samples per label
         :param random_state:
         :return:
           * X: np.ndarray
-              samples, shape (n_labels, n_samples_per_label)
+            samples, shape (n_labels, n_samples_per_label)
           * y: np.ndarray
-              labels, shape (n_labels, n_samples_per_label)
+            labels, shape (n_labels, n_samples_per_label)
         """
         if random_state is None:
             random_state = self.random_state
@@ -328,40 +332,39 @@ class FeatureBlender(BaseEstimator, TransformerMixin):
     """
     Class to transform input features into a random combination of them
 
-    Attributes:
-    -----------
-    n_features_in_: int
+    Notes:
+      Consider normalizing the feature values before blending.
+
+    :ivar int n_features_in_:
         number of input features
-    weights_: np.ndarray[float]
+    :ivar np.ndarray[float] weights_:
         weight of input features to produce output features,
         shape (n_features_out, n_features_in_)
-
-    Notes:
-    ------
-    Consider normalizing the feature values before blending.
     """
 
-    def __init__(self,
-                 count_distribution: stats.rv_discrete = stats.randint(5, 11),
-                 alpha: int = 1,
-                 n_features_out: int = 10,
-                 blending_mode: str = 'linear',
-                 sparse_weights: bool = True,
-                 random_state: _RANDOM_STATE_TYPE = None):
+    def __init__(
+            self,
+            count_distribution: stats.rv_discrete = stats.randint(5, 11),
+            alpha: int = 1,
+            n_features_out: int = 10,
+            blending_mode: str = 'linear',
+            sparse_weights: bool = True,
+            random_state: _RANDOM_STATE_TYPE = None
+    ):
         """
         Class to transform input features into a random combination of them
 
         :param count_distribution: frozen pre-parametrized distribution of the
-            number input of features taking part in one specific output feature
+          number input of features taking part in one specific output feature
         :param alpha: parameter for the Dirichlet distribution that determines
-            weights for input features in one specific output feature
+          weights for input features in one specific output feature
         :param n_features_out: number of output features to produce
         :param blending_mode: "linear" makes features using linear combination
-            (cf. central limit theorem), "logarithmic" makes features by
-            multiplication (resulting distribution approximates log-normal)
+          (cf. central limit theorem), "logarithmic" makes features by
+          multiplication (resulting distribution approximates log-normal)
         :param sparse_weights: whether to represent weights as a sparse matrix
         :param random_state: seed or RandomState instance, use None to
-            auto-seed
+          auto-seed
         """
         self.count_distribution = count_distribution
         self.alpha = alpha
@@ -418,12 +421,12 @@ class FeatureBlender(BaseEstimator, TransformerMixin):
         Do the transformation of input features
 
         :param X: input features to be combined,
-            shape (n_samples, n_features_in)
+          shape (n_samples, n_features_in)
         :param y: not used
         :param amplitude_like: transform quantities where amplitudes are
-            summed, i.e., all weights considered positive
+          summed, i.e., all weights considered positive
         :return: Xnew: np.ndarray
-            combined features, shape (n_samples, n_features_out)
+          combined features, shape (n_samples, n_features_out)
         """
         # shape (n_samples, n_features_in)
         X = check_array(X)  # type: np.ndarray
@@ -465,31 +468,33 @@ class NoiseBlender(BaseEstimator, TransformerMixin):
     """
     Class to transform features into a their noisy realization
 
-    n_features_in_: int
-        number of input features
-    weights_: np.ndarray[float]
-        0 <= weight <= 1 of input features in output features,
-        shape (n_features_in_)
-
     Notes:
-    ------
-    Please make sre that the amplitude of the noise distribution is matched to
-    the feature values.
+      Please make sre that the amplitude of the noise distribution is matched
+      to the feature values.
+
+    :ivar int n_features_in_:
+      number of input features
+    :ivar np.ndarray[float] weights_:
+      0 <= weight <= 1 of input features in output features,
+      shape (n_features_in_)
     """
 
-    def __init__(self, noise_distribution: stats.rv_continuous = stats.norm,
-                 blending_mode: str = 'linear',
-                 random_state: _RANDOM_STATE_TYPE = None):
+    def __init__(
+            self,
+            noise_distribution: stats.rv_continuous = stats.norm,
+            blending_mode: str = 'linear',
+            random_state: _RANDOM_STATE_TYPE = None
+    ):
         """
         Class to transform features into a their noisy realization
 
         :param noise_distribution: frozen pre-parametrized distribution of the
-            number input of features taking part in one specific output feature
+          number input of features taking part in one specific output feature
         :param blending_mode: 'linear' makes features using linear combination
-            (cf. central limit theorem), 'logarithmic' makes features by
-            multiplication (resulting distribution approximates log-normal)
+          (cf. central limit theorem), 'logarithmic' makes features by
+          multiplication (resulting distribution approximates log-normal)
         :param random_state: seed or RandomState instance, use None to
-            auto-seed
+          auto-seed
         """
         self.noise_distribution = noise_distribution
         self.blending_mode = blending_mode
@@ -521,7 +526,7 @@ class NoiseBlender(BaseEstimator, TransformerMixin):
         :param X: input features to be combined, shape (..., n_features)
         :param y: not used
         :param amplitude_like: transform quantities where amplitudes are
-            summed, i.e., all weights considered positive
+          summed, i.e., all weights considered positive
         :return: Xnew: np.ndarray
           combined features, shape (..., n_features_out)
         """
@@ -693,7 +698,7 @@ def blend_features(
         relative_usefulness_content: stats.rv_continuous,
         noise_distribution: stats.rv_continuous,
         random_state: _RANDOM_STATE_TYPE
-) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, ]:
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray,]:
     """
     Create a high dimensional feature space from the low-dimensional input
 
@@ -780,55 +785,55 @@ def generate_feature_space(
     :param n_labels: number of labels to simulate
     :param n_samples_per_label: number of samples per label
     :param n_true_features: number of underlying true hidden features, they are
-        meant to be useful features
+      meant to be useful features
     :param n_fake_features: number of underlying fake hidden features, they are
-        meant to be fixed random noise;
-        these features are intended to be not informative but due to their
-        consistent values used in out_features they may carry information about
-        the class label; to avoid this either pick 0 or a lot of them
+      meant to be fixed random noise;
+      these features are intended to be not informative but due to their
+      consistent values used in out_features they may carry information about
+      the class label; to avoid this either pick 0 or a lot of them
     :param n_features_out: number of measured features to be simulated
     :param blending_mode: "linear" simulates measured features using linear
-        combination (cf. central limit theorem), "logarithmic" simulates
-        measured features by multiplication (resulting distribution
-        approximates log-normal)
+      combination (cf. central limit theorem), "logarithmic" simulates
+      measured features by multiplication (resulting distribution
+      approximates log-normal)
     :param min_usefulness: minimum usefulness of true hidden features,
-        0 < min_usefulness <= max_usefulness
+      0 < min_usefulness <= max_usefulness
     :param max_usefulness: maximum usefulness of true hidden features,
-        min_usefulness <= max_usefulness <= 1
+      min_usefulness <= max_usefulness <= 1
     :param usefulness_scheme: distribution of usefulness, one of "linear",
-        "exponential" and "longtailed"
+      "exponential" and "longtailed"
     :param tail_power: exponent for "longtailed" usefulness_scheme
     :param location_distribution: distribution type of the characteristic
-        trait of labels, i.e., the envelop of locations for true features
+      trait of labels, i.e., the envelop of locations for true features
     :param scale_distribution: frozen pre-parametrized distribution of
-        the amplitude of the sampling noise (uncertainty of reproduction),
-        i.e., the scale of different samples for the same label in true
-        features
+      the amplitude of the sampling noise (uncertainty of reproduction),
+      i.e., the scale of different samples for the same label in true
+      features
     :param sampling_distribution: distribution type of the uncertainty of
-        reproduction, i.e., the noise for different samples from the same
-        label in hidden features
+      reproduction, i.e., the noise for different samples from the same
+      label in hidden features
     :param location_ordering_extent: keep segments of locations of given
-        block size together in each feature independently, use -1 to use
-        exactly the same location order; making this parameter other than zero
-        helps to reduce the new information added by each true feature because
-        their information gets more redundant; default: 0
+      block size together in each feature independently, use -1 to use
+      exactly the same location order; making this parameter other than zero
+      helps to reduce the new information added by each true feature because
+      their information gets more redundant; default: 0
     :param location_sharing_extent: make locations shared by multiple labels
-        in each feature independently, use 0 to make all locations unique;
-        making this parameter other than zero helps to reduce the new
-        information added by each true feature because their information gets
-        more redundant; default: 0
+      in each feature independently, use 0 to make all locations unique;
+      making this parameter other than zero helps to reduce the new
+      information added by each true feature because their information gets
+      more redundant; default: 0
     :param count_distribution: frozen pre-parametrized distribution of the
-        number of hidden features taking part in one specific output feature
-    :param polynomial: whether to form polynomial features, you can provide the
-        maximum degree as an integer, be aware that the hidden feature space
-        internally gets transformed to approx. n_features ** degree features
+      number of hidden features taking part in one specific output feature
+    :param polynomial: whether to form polynomial features, you can provide
+      the maximum degree as an integer, be aware that the hidden feature space
+      internally gets transformed to approx. n_features ** degree features
     :param relative_usefulness_content: frozen pre-parametrized distribution
-        for the scale of with uninformative noise,
-        given as the part of the output range, 0<=part<1
+      for the scale of with uninformative noise,
+      given as the part of the output range, 0<=part<1
     :param noise_distribution: distribution type of the additive random noise,
-        it is scaled automatically
+      it is scaled automatically
     :param random_state: seed or RandomState instance, use None to auto-seed,
-        default: fixed-seed
+      default: fixed-seed
     :return:
       * out_features: np.ndarray
          feature space, shape (n_samples_per_label * n_labels, n_features_out)

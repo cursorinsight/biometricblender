@@ -1,7 +1,7 @@
 """
 The purpose of this test set is to test all aspects of feature generation.
 
-@author: Stippinger
+:author: Stippinger
 """
 
 import numpy as np
