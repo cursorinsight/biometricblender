@@ -22,7 +22,7 @@ from biometric_blender.generator_api import EffectiveFeature
 # # #  Gridsearch scores for the table of accuracy  # # #
 
 def get_data_on_the_fly(
-        n_labels=100, n_samples_per_label=16, n_true_features=40,
+        n_classes=100, n_samples_per_class=16, n_true_features=40,
         n_fake_features=160, n_features_out=10000, seed=137
 ) -> Iterable[Tuple[str, str, Dict[str, Any], Tuple[np.ndarray, ...]]]:
     """
@@ -41,11 +41,11 @@ def get_data_on_the_fly(
     """
     from biometric_blender import generate_feature_space
 
-    kw = dict(n_labels=n_labels,
+    kw = dict(n_classes=n_classes,
               count_distribution=stats.randint(5, 11),
               min_usefulness=0.50,
               max_usefulness=0.95,
-              n_samples_per_label=n_samples_per_label,
+              n_samples_per_class=n_samples_per_class,
               n_true_features=n_true_features,
               n_fake_features=n_fake_features,
               location_ordering_extent=2,

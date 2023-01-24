@@ -1,0 +1,8 @@
+--n-classes=252
+--n-samples-per-class=3
+--n-true-features=50
+--n-fake-features=118
+--n-features-out=753
+--min-count=2
+--max-count=4
+--max-noise=0.3
