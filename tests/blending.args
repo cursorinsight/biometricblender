@@ -1,0 +1,8 @@
+n-labels=100
+n-samples-per-label=16
+n-true-features=40
+n-fake-features=160
+location-ordering-extent=2
+location-sharing-extent=3
+n-features-out=10000
+blending-mode=logarithmic

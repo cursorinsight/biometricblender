@@ -21,12 +21,13 @@ from biometric_blender.generator_api import EffectiveFeature
 
 # # #  Gridsearch scores for the table of accuracy  # # #
 
-def get_data(
+def get_data_on_the_fly(
         n_labels=100, n_samples_per_label=16, n_true_features=40,
         n_fake_features=160, n_features_out=10000, seed=137
 ) -> Iterable[Tuple[str, str, Dict[str, Any], Tuple[np.ndarray, ...]]]:
     """
-    Generate some test data: true only, hidden only, all output features
+    Generate some test data on the fly:
+    true only, hidden only, all output features
     """
     from biometric_blender import generate_feature_space
 
@@ -61,7 +62,7 @@ def make_data(
     import runpy
     saved_argv = sys.argv
     sys.argv = [saved_argv[0], f'@{fn_base}.args',
-                '--output', f'{fn_base}.hdf5']
+                '--output', f'tmp/{fn_base}.hdf5']
     runpy.run_module("biometric_blender", run_name='__main__')
     sys.argv = saved_argv
 
@@ -134,7 +135,7 @@ def get_reduction(n_components=None, preset=None, preset_only=False,
 def get_classifiers(seed=4242) -> Iterable[
     Tuple[str, "sklearn.base.ClassifierMixin"]]:
     """
-    Get benchmark classifiers
+    Get benchmark classifiers with their default parameters (no gridsearch)
     """
     # see https://scikit-learn.org/stable/auto_examples/classification/plot_classifier_comparison.html
     from sklearn.neighbors import KNeighborsClassifier
@@ -158,17 +159,18 @@ def score_classifiers(fn_base: Union[str, dict] = 'screening',
                       output_fn: Optional[str] = None,
                       n_jobs: int = 2):
     """
-    Score benchmark classifiers on the data
+    Score benchmark classifiers on the data.
+    Not used in the BiometricBlender paper.
     """
     from itertools import product as iterprod
     from sklearn.model_selection import cross_val_score
     result = {}
     if isinstance(fn_base, str):
-        data_fn = read_data(f'{fn_base}.hdf5')
-        output_fn = output_fn or f'{fn_base}_scores.csv'
+        data_fn = read_data(f'tmp/{fn_base}.hdf5')
+        output_fn = output_fn or f'fig/{fn_base}_scores.csv'
     else:
-        data_fn = get_data(**fn_base)
-        output_fn = output_fn or 'fig/scores.csv'
+        data_fn = get_data_on_the_fly(**fn_base)
+        output_fn = output_fn or 'fig/onthefly_scores.csv'
     for (red_name, red_obj, red_n), \
         (data_fn, data_kind, data_kw, data_fs) in tqdm(
             iterprod(get_reduction(n_components=None), data_fn),
@@ -197,12 +199,14 @@ def score_screening(  # todo score_gridsearch_screening
         n_components: Sequence[int] = (10, 25, 50, 100, 200, 400, 800),
         n_jobs: int = 2):
     """
-    Score classifiers on the screened data. First feature id is 1 opposed to 0.
+    Score classifiers on some screened data. Screening results must be
+    provided externally. First feature id is 1 opposed to pythonic 0.
     """
     from sklearn.model_selection import cross_val_score
     output_fn = output_fn or f'{fn_base}_screened_scores.csv'
     result = {}
-    data_fn, data_kind, data_kw, data_fs = list(read_data(f'{fn_base}.hdf5'))[-1]
+    data_fn, data_kind, data_kw, data_fs = list(
+        read_data(f'tmp/{fn_base}.hdf5'))[-1]
     (out_features, out_labels, out_usefulness, out_names,
      hidden_features, hidden_usefulness) = data_fs
     importances = pd.read_csv(
@@ -258,11 +262,11 @@ def score_gridsearch_classifiers(
     from sklearn.model_selection import GridSearchCV
     result = []
     if isinstance(fn_base, str):
-        data = read_data(f'{fn_base}.hdf5')
-        output_fn = output_fn or f'{fn_base}_gridsearch_scores.csv'
+        data = read_data(f'tmp/{fn_base}.hdf5')
+        output_fn = output_fn or f'fig/{fn_base}_gridsearch_scores.csv'
     else:
-        data = get_data(**fn_base)
-        output_fn = output_fn or 'fig/gridsearch_scores.csv'
+        data = get_data_on_the_fly(**fn_base)
+        output_fn = output_fn or 'fig/onthefly_gridsearch_scores.csv'
     for (red_name, red_obj, red_n),\
         (data_fn, data_kind, data_kw, data_fs) in tqdm(
             iterprod(get_reduction(n_components=n_components), data),
@@ -404,8 +408,10 @@ def make_figure_accuracy(fn_base: str, data_kind: str):
 
 def compute_scores_for_n_components(X, red):
     """
-    Cross validated reduction scores for varying n_components,
-    this could be a GridSearchCV.
+    Cross validated reduction scores for varying n_components.
+
+    Notes: This could be a GridSearchCV. This function is used only by
+    plot_factor_analysis_reconstruction just below.
     """
     from sklearn.model_selection import cross_val_score
     from sklearn.base import clone
@@ -425,10 +431,14 @@ def plot_factor_analysis_reconstruction():
     """
     Estimate number of factors based on cross-validated model likelihood.
     Plot a matrix of original vs varimax rotated inferred factors.
+
+    Notes: This is an exploratory figure not included in the BiometricBlender
+    paper. It uses the entire matrix output of FA, therefore calculation and
+    plotting are bundled.
     """
     from sklearn.decomposition import FactorAnalysis
     from scipy.stats import spearmanr
-    for name, kw, fs in get_data(n_fake_features=40):
+    for name, kw, fs in get_data_on_the_fly(n_fake_features=40):
         (out_features, out_labels, out_usefulness, out_names,
          hidden_features, hidden_usefulness) = fs
         sorter = np.argsort(hidden_usefulness)[::-1]  # decreasing
@@ -555,7 +565,7 @@ def make_features_by_usefulness(
     return fs, labels, instances
 
 
-def make_slides_usefulness(seed=137):
+def make_slides_usefulness_demo(seed=137):
     """
     Show the effect of usefulness on two features and their locations
     (each usefulness is saved to a separate figure like a slideshow)
@@ -584,7 +594,7 @@ def make_slides_usefulness(seed=137):
         fig.savefig(f'fig/usefulness-fixed-{i}.png')
 
 
-def make_figure_usefulness(seed=137):
+def make_figure_usefulness_demo(seed=137):
     """
     Show the effect of usefulness on two features
     (save the figure presented in the paper)
@@ -625,7 +635,7 @@ def make_figure_usefulness(seed=137):
 
 # # #  Entry point  # # #
 
-def main(demo: bool,
+def main(usefulness_demo: bool,
          generate: bool,
          fn_base: str,
          *,
@@ -636,10 +646,7 @@ def main(demo: bool,
     # # prerequisites # #
     import os
     os.makedirs('fig', exist_ok=True)
-
-    if demo:
-        make_slides_usefulness()
-        make_figure_usefulness()
+    os.makedirs('tmp', exist_ok=True)
 
     if generate:
         print('generating...', flush=True)
@@ -649,8 +656,7 @@ def main(demo: bool,
     # score_classifiers(fn_base, output_fn=None, n_jobs=4)
 
     if importances_fn:
-        # we provide a different output for each importance instance,
-        # however, this output shall not be used for other methods
+        # Importances must be provided externally.
         score_screening(fn_base, importances_fn=importances_fn,
                         output_fn=output_fn)
 
@@ -663,21 +669,24 @@ def main(demo: bool,
             make_table_accuracy(fn_base, data_kind)
             make_figure_accuracy(fn_base, data_kind)
 
-        # # supplementary # #
-        make_figure_usefulness()
+    # # supplementary # #
+    if usefulness_demo:
+        make_slides_usefulness_demo()
+        make_figure_usefulness_demo()
 
 
 def cli():
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument('--demo', action='store_true')
+    parser.add_argument('--usefulness-demo', action='store_true')
     parser.add_argument('--generate', action='store_true')
     parser.add_argument('--gridsearch', action='store_true')
-    parser.add_argument('--fn_base', type=str, default='screening')
+    parser.add_argument('--fn_base', type=str, default='blending')
     parser.add_argument('--importances_fn', type=str, default=None)
     parser.add_argument('--output_fn', type=str, default=None)  # screening!
     args = parser.parse_args()
-    main(demo=args.demo, generate=args.generate, gridsearch=args.gridsearch,
+    main(usefulness_demo=args.usefulness_demo,
+         generate=args.generate, gridsearch=args.gridsearch,
          fn_base=args.fn_base, importances_fn=args.importances_fn,
          output_fn=args.output_fn)
 
