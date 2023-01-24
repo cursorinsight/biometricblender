@@ -27,7 +27,17 @@ def get_data_on_the_fly(
 ) -> Iterable[Tuple[str, str, Dict[str, Any], Tuple[np.ndarray, ...]]]:
     """
     Generate some test data on the fly:
-    true only, hidden only, all output features
+    true only, hidden only, all output features.
+
+    Output is tuples of:
+
+    * file name: "-"
+    * data kind: "true"|"hidden"|"full"
+    * keyword arguments
+    * feature space (visible features, class labels, visible usefulness,
+      visible feature names, hidden features, hidden usefulness)
+
+    For details see :fun:`biometric_blender.generate_feature_space`
     """
     from biometric_blender import generate_feature_space
 
@@ -72,6 +82,16 @@ def read_data(
 ) -> Iterable[Tuple[str, str, Dict[str, Any], Tuple[np.ndarray, ...]]]:
     """
     Read data from file: if available, true only, hidden only, all features
+
+    Output is tuples of:
+
+    * file name
+    * data kind: "true"|"hidden"|"full"
+    * keyword arguments (for full only)
+    * feature space (features, class labels, usefulness, feature names,
+      None, None)
+
+    For details see :fun:`biometric_blender.generate_feature_space`
     """
     import h5py as hdf
     with hdf.File(fn, mode='r') as f:
@@ -207,6 +227,8 @@ def score_screening(  # todo score_gridsearch_screening
     result = {}
     data_fn, data_kind, data_kw, data_fs = list(
         read_data(f'tmp/{fn_base}.hdf5'))[-1]
+    if data_kind != 'full':
+        raise ValueError
     (out_features, out_labels, out_usefulness, out_names,
      hidden_features, hidden_usefulness) = data_fs
     importances = pd.read_csv(
@@ -410,7 +432,8 @@ def compute_scores_for_n_components(X, red):
     """
     Cross validated reduction scores for varying n_components.
 
-    Notes: This could be a GridSearchCV. This function is used only by
+    Notes: This could be a GridSearchCV. The score for reduction is
+    calculated on a model likelihood basis. This function is used only by
     plot_factor_analysis_reconstruction just below.
     """
     from sklearn.model_selection import cross_val_score
@@ -438,9 +461,10 @@ def plot_factor_analysis_reconstruction():
     """
     from sklearn.decomposition import FactorAnalysis
     from scipy.stats import spearmanr
-    for name, kw, fs in get_data_on_the_fly(n_fake_features=40):
+    for data_fn, data_kind, data_kw, data_fs in get_data_on_the_fly(
+            n_fake_features=40):
         (out_features, out_labels, out_usefulness, out_names,
-         hidden_features, hidden_usefulness) = fs
+         hidden_features, hidden_usefulness) = data_fs
         sorter = np.argsort(hidden_usefulness)[::-1]  # decreasing
         ranked_usefulness = hidden_usefulness[sorter]
         ranked_hidden_features = hidden_features[:, sorter]
@@ -487,8 +511,35 @@ def plot_factor_analysis_reconstruction():
         ax[3].set_xlabel('usefulness or detectability')
         ax[3].set_ylabel('rank')
         ax[3].legend()
-        fig.savefig('fig/fa_{}.pdf'.format(name))
+        fig.savefig('fig/fa_{}.pdf'.format(data_kind))
         plt.show()
+
+
+def plot_pca_components(fn_base: str):
+    """
+    Make figure from stored scores as a function of n_components
+    (from the various parametrizations only the best score is kept)
+    """
+    from matplotlib import pyplot as plt
+    from sklearn.decomposition import PCA
+    data_fn, data_kind, data_kw, data_fs = list(read_data(
+        f'tmp/{fn_base}.hdf5'))[-1]
+    if data_kind != 'full':
+        raise ValueError
+    (out_features, out_labels, out_usefulness, out_names,
+     hidden_features, hidden_usefulness) = data_fs
+    pca = PCA(n_components=None)
+    pca.fit(out_features, out_labels)
+    explained = pca.explained_variance_
+    noise = pca.noise_variance_
+    fig, ax = plt.subplots(figsize=(2, 1.5))
+    ax.plot(np.arange(len(explained)) + 1, explained, color='k',
+            label='explained')
+    ax.axhline(noise, linestyle='--', color='k', label='noise')
+    ax.set_ylabel('variance')
+    ax.set_xlabel('n_features')
+    ax.legend(loc='upper right')
+    fig.savefig(f'fig/pca_{fn_base}.pdf', bbox_inches='tight')
 
 
 # # #  Figures for the targeted usefulness of hidden features  # # #
@@ -636,10 +687,11 @@ def make_figure_usefulness_demo(seed=137):
 # # #  Entry point  # # #
 
 def main(usefulness_demo: bool,
-         generate: bool,
          fn_base: str,
          *,
-         gridsearch: bool = True,
+         generate: bool = False,
+         pca: bool = False,
+         gridsearch: bool = False,
          importances_fn: Optional[str] = None,
          output_fn: Optional[str] = None,
          ):
@@ -651,6 +703,10 @@ def main(usefulness_demo: bool,
     if generate:
         print('generating...', flush=True)
         make_data(fn_base)
+
+    if pca:
+        print('pca variance explained...', flush=True)
+        plot_pca_components(fn_base)
 
     # # simple scoring # #
     # score_classifiers(fn_base, output_fn=None, n_jobs=4)
@@ -681,12 +737,13 @@ def cli():
     parser.add_argument('--usefulness-demo', action='store_true')
     parser.add_argument('--generate', action='store_true')
     parser.add_argument('--gridsearch', action='store_true')
-    parser.add_argument('--fn_base', type=str, default='blending')
-    parser.add_argument('--importances_fn', type=str, default=None)
-    parser.add_argument('--output_fn', type=str, default=None)  # screening!
+    parser.add_argument('--pca', action='store_true')
+    parser.add_argument('--fn-base', type=str, default='blending')
+    parser.add_argument('--importances-fn', type=str, default=None)
+    parser.add_argument('--output-fn', type=str, default=None)  # screening!
     args = parser.parse_args()
     main(usefulness_demo=args.usefulness_demo,
-         generate=args.generate, gridsearch=args.gridsearch,
+         generate=args.generate, pca=args.pca, gridsearch=args.gridsearch,
          fn_base=args.fn_base, importances_fn=args.importances_fn,
          output_fn=args.output_fn)
 
