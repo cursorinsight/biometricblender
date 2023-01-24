@@ -96,10 +96,10 @@ def PARSER() -> ArgumentParser:
         formatter_class=ArgumentDefaultsHelpFormatter,
         fromfile_prefix_chars='@')
     p.add_argument('--n-labels',
-                   help='identified labels to simulate',
+                   help='identified labels (classes) to simulate',
                    default=100, type=int)
     p.add_argument('--n-samples-per-label',
-                   help='samples per label',
+                   help='samples per label (class)',
                    default=16, type=int)
     p.add_argument('--n-true-features',
                    help='number of underlying true hidden features, they are '
@@ -124,13 +124,13 @@ def PARSER() -> ArgumentParser:
                    default=1.5, type=float)
     p.add_argument('--location-distribution',
                    help='distribution type of the characteristic trait of '
-                        'labels, i.e., the envelop of locations for true '
-                        'features',
+                        'labels (classes), i.e., the envelop of locations '
+                        'for true features',
                    default='norm', choices=['norm', 'uniform'], type=str)
     p.add_argument('--sampling-distribution',
                    help='distribution type of the uncertainty of reproduction,'
                         'i.e., the noise for different samples from the same '
-                        'label in hidden features',
+                        'label (class) in hidden features',
                    default='norm', choices=['norm', 'uniform'], type=str)
     p.add_argument('--location-ordering-extent',
                    help='keep segments of locations of given block size '
@@ -138,9 +138,9 @@ def PARSER() -> ArgumentParser:
                         'use exactly the same location order',
                    default=0, type=int)
     p.add_argument('--location-sharing-extent',
-                   help='make locations shared by multiple labels in each '
-                        'feature independently, use 0 to make all locations '
-                        'unique',
+                   help='make locations shared by multiple labels (classes) '
+                        'in each feature independently, use 0 to make all '
+                        'locations unique',
                    default=0, type=int)
     p.add_argument('--polynomial',
                    help='use polynomial mixing of features',
