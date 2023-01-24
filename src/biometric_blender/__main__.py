@@ -85,6 +85,9 @@ if __name__ == '__main__':
                    help='maximum number of hidden features taking part in one '
                         'specific output feature',
                    default=10, type=int)
+    p.add_argument('--noise-strength',
+                   help='scaling factor for the observation noise',
+                   default=1., type=float)
     p.add_argument('--store-hidden',
                    help='store the hidden feature space for later analysis',
                    action='store_true')
