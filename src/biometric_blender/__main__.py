@@ -17,14 +17,15 @@ if __name__ == '__main__':
         description='BiometricBlender: Ultra-high dimensional, multi-class '
                     'synthetic data generator to imitate biometric feature '
                     'space',
-        epilog='Copyright (C) The BiometricBlender contributors, 2021.',
+        epilog='Copyright (C) The BiometricBlender contributors, 2021-2023.',
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         fromfile_prefix_chars='@')
-    p.add_argument('--n-labels',
-                   help='identified labels (classes) to simulate',
+    p.add_argument('--n-classes',
+                   help='number of classes (or labels) of the classification '
+                        'problem to simulate',
                    default=100, type=int)
-    p.add_argument('--n-samples-per-label',
-                   help='samples per label (class)',
+    p.add_argument('--n-samples-per-class',
+                   help='number of samples per class',
                    default=16, type=int)
     p.add_argument('--n-true-features',
                    help='number of underlying true hidden features, they are '
@@ -49,13 +50,13 @@ if __name__ == '__main__':
                    default=1.5, type=float)
     p.add_argument('--location-distribution',
                    help='distribution type of the characteristic trait of '
-                        'labels (classes), i.e., the envelop of locations '
+                        'classes, i.e., the envelop of locations '
                         'for true features',
                    default='norm', choices=['norm', 'uniform'], type=str)
     p.add_argument('--sampling-distribution',
                    help='distribution type of the uncertainty of reproduction,'
                         'i.e., the noise for different samples from the same '
-                        'label (class) in hidden features',
+                        'class (or label) in hidden features',
                    default='norm', choices=['norm', 'uniform'], type=str)
     p.add_argument('--location-ordering-extent',
                    help='keep segments of locations of given block size '
@@ -63,8 +64,8 @@ if __name__ == '__main__':
                         'use exactly the same location order',
                    default=0, type=int)
     p.add_argument('--location-sharing-extent',
-                   help='make locations shared by multiple labels (classes) '
-                        'in each feature independently, use 0 to make all '
+                   help='make locations shared by multiple classes in '
+                        'each feature independently, use 0 to make all '
                         'locations unique',
                    default=0, type=int)
     p.add_argument('--polynomial',

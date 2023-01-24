@@ -44,27 +44,27 @@ class TestSegmentShuffle(TestCase):
 class TestEffectiveFeature(TestCase):
     def test_get_samples(self):
         from biometric_blender.generator_api import EffectiveFeature
-        n_labels = 20
-        n_samples_per_label = 100
-        ef = EffectiveFeature(n_labels, 0.2, random_state=137)
+        n_classes = 20
+        n_samples_per_class = 100
+        ef = EffectiveFeature(n_classes, 0.2, random_state=137)
         ef.fit()
         samples, labels = ef.get_samples(
-            n_samples_per_label=n_samples_per_label)
+            n_samples_per_class=n_samples_per_class)
         self.assertEqual(samples.shape, labels.shape)
-        self.assertEqual(samples.shape, (n_labels, n_samples_per_label))
+        self.assertEqual(samples.shape, (n_classes, n_samples_per_class))
         return samples
 
     def test_sample_extent(self):
         from biometric_blender.generator_api import EffectiveFeature
-        n_labels = 20
+        n_classes = 20
         n_extents = 100
-        samples = np.empty((n_labels, n_extents))
+        samples = np.empty((n_classes, n_extents))
         for i in range(n_extents):
-            ef = EffectiveFeature(n_labels, 10 ** (float(i) / n_extents - 0.5),
-                                  random_state=i,
-                                  location_ordering_extent=-1)
+            ef = EffectiveFeature(
+                n_classes, 10 ** (float(i) / n_extents - 0.5),
+                random_state=i, location_ordering_extent=-1)
             ef.fit()
-            samples[:, i:i + 1], labels = ef.get_samples(n_samples_per_label=1)
+            samples[:, i:i + 1], labels = ef.get_samples(n_samples_per_class=1)
         return samples
 
 
@@ -112,8 +112,8 @@ class TestGenerator(TestCase):
             [0.81, 0.49, 0.25, 0.09, 0.01]))
 
     @staticmethod
-    def generate_some(n_labels=100,
-                      n_samples_per_label=16,
+    def generate_some(n_classes=100,
+                      n_samples_per_class=16,
                       n_true_features=9,
                       n_fake_features=93,
                       n_features_out=1013
@@ -121,8 +121,8 @@ class TestGenerator(TestCase):
         from biometric_blender import generate_feature_space
         from scipy.stats import randint, uniform
 
-        kw = dict(n_labels=n_labels,
-                  n_samples_per_label=n_samples_per_label,
+        kw = dict(n_classes=n_classes,
+                  n_samples_per_class=n_samples_per_class,
                   n_true_features=n_true_features,
                   n_features_out=n_features_out,
                   min_usefulness=1,
@@ -131,8 +131,8 @@ class TestGenerator(TestCase):
         fs = generate_feature_space(**kw)
         yield 'all useful', kw, fs
 
-        kw = dict(n_labels=n_labels,
-                  n_samples_per_label=n_samples_per_label,
+        kw = dict(n_classes=n_classes,
+                  n_samples_per_class=n_samples_per_class,
                   n_true_features=n_true_features,
                   n_features_out=n_features_out,
                   min_usefulness=0.1,
@@ -141,16 +141,16 @@ class TestGenerator(TestCase):
         fs = generate_feature_space(**kw)
         yield 'basic', kw, fs
 
-        kw = dict(n_labels=n_labels,
-                  n_samples_per_label=n_samples_per_label,
+        kw = dict(n_classes=n_classes,
+                  n_samples_per_class=n_samples_per_class,
                   n_true_features=n_true_features,
                   n_features_out=n_features_out,
                   polynomial=True)
         fs = generate_feature_space(**kw)
         yield 'polynomial', kw, fs
 
-        kw = dict(n_labels=n_labels,
-                  n_samples_per_label=n_samples_per_label,
+        kw = dict(n_classes=n_classes,
+                  n_samples_per_class=n_samples_per_class,
                   n_true_features=n_true_features,
                   n_features_out=n_features_out,
                   relative_usefulness_content=uniform(0.6, 0.4),
@@ -158,8 +158,8 @@ class TestGenerator(TestCase):
         fs = generate_feature_space(**kw)
         yield 'logarithmic', kw, fs
 
-        kw = dict(n_labels=n_labels,
-                  n_samples_per_label=n_samples_per_label,
+        kw = dict(n_classes=n_classes,
+                  n_samples_per_class=n_samples_per_class,
                   n_true_features=n_true_features,
                   n_features_out=n_features_out,
                   blending_mode='logarithmic',
@@ -167,8 +167,8 @@ class TestGenerator(TestCase):
         fs = generate_feature_space(**kw)
         yield 'noiseless logarithmic', kw, fs
 
-        kw = dict(n_labels=n_labels,
-                  n_samples_per_label=n_samples_per_label,
+        kw = dict(n_classes=n_classes,
+                  n_samples_per_class=n_samples_per_class,
                   n_true_features=n_true_features,
                   n_features_out=n_features_out,
                   n_fake_features=0,
@@ -177,8 +177,8 @@ class TestGenerator(TestCase):
         fs = generate_feature_space(**kw)
         yield 'true logarithmic', kw, fs
 
-        kw = dict(n_labels=n_labels,
-                  n_samples_per_label=n_samples_per_label,
+        kw = dict(n_classes=n_classes,
+                  n_samples_per_class=n_samples_per_class,
                   n_true_features=n_true_features,
                   n_features_out=n_features_out,
                   n_fake_features=0,
@@ -187,24 +187,24 @@ class TestGenerator(TestCase):
         fs = generate_feature_space(**kw)
         yield 'pure logarithmic', kw, fs
 
-        kw = dict(n_labels=n_labels,
-                  n_samples_per_label=n_samples_per_label,
+        kw = dict(n_classes=n_classes,
+                  n_samples_per_class=n_samples_per_class,
                   n_true_features=n_true_features,
                   n_features_out=n_features_out,
                   location_ordering_extent=3)
         fs = generate_feature_space(**kw)
         yield 'ordered', kw, fs
 
-        kw = dict(n_labels=n_labels,
-                  n_samples_per_label=n_samples_per_label,
+        kw = dict(n_classes=n_classes,
+                  n_samples_per_class=n_samples_per_class,
                   n_true_features=n_true_features,
                   n_features_out=n_features_out,
                   location_sharing_extent=3)
         fs = generate_feature_space(**kw)
         yield 'shared', kw, fs
 
-        kw = dict(n_labels=n_labels,
-                  n_samples_per_label=n_samples_per_label,
+        kw = dict(n_classes=n_classes,
+                  n_samples_per_class=n_samples_per_class,
                   n_true_features=n_true_features,
                   n_features_out=n_features_out,
                   n_fake_features=n_fake_features)
@@ -215,10 +215,10 @@ class TestGenerator(TestCase):
         for name, kw, fs in self.generate_some():
             out_features, out_labels, out_usefulness, out_names, _, _ = fs
             self.assertEqual(out_features.shape, (
-                kw['n_samples_per_label'] * kw['n_labels'],
+                kw['n_samples_per_class'] * kw['n_classes'],
                 kw['n_features_out']))
             self.assertEqual(out_labels.shape,
-                             (kw['n_samples_per_label'] * kw['n_labels'],))
+                             (kw['n_samples_per_class'] * kw['n_classes'],))
             self.assertEqual(out_usefulness.shape, (kw['n_features_out'],))
             self.assertEqual(out_names.shape, (kw['n_features_out'],))
 

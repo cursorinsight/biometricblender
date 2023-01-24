@@ -159,14 +159,15 @@ class SegmentShuffle(BaseEstimator, TransformerMixin):
 class EffectiveFeature(object):
     """
     Class to simulate a standalone hidden feature that is effective
-    in label identification
+    in class (or label) identification
 
     :ivar np.ndarray[float] locations_:
-      the characteristic trait of labels, i.e., location of the feature value
-      for specific labels, shape (n_labels, )
+      the characteristic trait of classes, i.e., location of the feature value
+      for specific labels, shape (n_classes, )
     :ivar np.ndarray[float] scales_:
       the amplitude of the sampling noise (uncertainty of reproduction),
-      i.e., scale of different samples for the same label, shape (n_labels, )
+      i.e., scale of different samples for the same class (or label),
+      shape (n_classes, )
     :ivar float range_:
       the approximate scale of the feature in the population, i.e., the scale
       of the locations plus the scale of the sampling noise
@@ -174,7 +175,7 @@ class EffectiveFeature(object):
 
     def __init__(
             self,
-            n_labels: int,
+            n_classes: int,
             extent: float,
             location_distribution: stats.rv_continuous = stats.norm,
             scale_distribution: stats.rv_continuous = stats.uniform(0.5, 1.0),
@@ -183,7 +184,8 @@ class EffectiveFeature(object):
             location_sharing_extent: int = 0,
             random_state: _RANDOM_STATE_TYPE = None):
         """
-        Class to simulate one feature that is effective in label identification
+        Class to simulate one feature that is effective in class (or label)
+        identification
 
         Notes:
           One can use higher values for `location_ordering_extent` and
@@ -201,33 +203,34 @@ class EffectiveFeature(object):
             * constrained: uniform, beta, >0
             * unconstrained: exponential, pareto (heavy-tailed) > 0
 
-        :param n_labels: number of labels
-        :param extent: average extent of label traits in the feature,
+        :param n_classes: number of classes (or labels) of the classification
+          problem
+        :param extent: average extent of class traits in the feature,
           interpreted as a multiple of standard deviation of the location
           distribution, advised values lie between 0.01 and 10
         :param location_distribution: distribution type of the characteristic
-          trait of labels, i.e., location of the feature value for specific
+          trait of classes, i.e., location of the feature value for specific
           labels (`location` parameter to `sampling_distribution˙)
         :param scale_distribution: frozen pre-parametrized distribution of
           the amplitude of the sampling noise (uncertainty of reproduction),
-          i.e., scale of different samples for the same label (`scale`
+          i.e., scale of different samples for the same class (`scale`
           parameter to `sampling_distribution˙)
         :param sampling_distribution: distribution type of the uncertainty of
           reproduction, i.e., the noise for different samples from the same
-          label
+          class (or label)
         :param location_ordering_extent: average number of consecutive
           locations, use 0 for no explicit ordering, use -1 for all
           locations to be ordered increasingly, use any other negative
           value to define a fixed number (absolute value, discouraged) of
           consecutive locations
-        :param location_sharing_extent: average number of labels sharing a
+        :param location_sharing_extent: average number of classes sharing a
           common location, use 0 for none, use any negative value to define
-          a fixed number (absolute value, discouraged) of labels sharing a
+          a fixed number (absolute value, discouraged) of classes sharing a
           common location
         :param random_state: seed or RandomState instance, use None to
           auto-seed
         """
-        self.n_labels = n_labels
+        self.n_classes = n_classes
         self.extent = extent
         self.random_state = random_state
         self.location_distribution = location_distribution
@@ -262,14 +265,14 @@ class EffectiveFeature(object):
                 # exact number (absolute value), discouraged
                 loc_share = -self.location_sharing_extent
             seg = SegmentShuffle(loc_share, random_state=random_state)
-            blocks = seg.get_block_sizes(self.n_labels)
+            blocks = seg.get_block_sizes(self.n_classes)
             n_unique_locations = len(blocks)
-            assignment = np.zeros(self.n_labels, dtype=int)
+            assignment = np.zeros(self.n_classes, dtype=int)
             for i, (s, e) in enumerate(seg.get_block_bounds(blocks)):
                 # keep block id ordered, it may be needed for loc. ordering
                 assignment[s:e] = i
         else:
-            n_unique_locations = self.n_labels
+            n_unique_locations = self.n_classes
             assignment = slice(None)
         locations = self.location_distribution.rvs(
             size=n_unique_locations, random_state=random_state)[assignment]
@@ -289,11 +292,11 @@ class EffectiveFeature(object):
                 SegmentShuffle(loc_order, random_state=random_state
                                ).fit_transform(np.sort(locations)))
         self.scales_ = scaling_for_sampling * self.scale_distribution.rvs(
-            size=self.n_labels, random_state=random_state)
+            size=self.n_classes, random_state=random_state)
         self.range_ = np.linalg.norm(
             [location_std, scaling_for_sampling * mean_of_sampling_std], ord=2)
 
-    def get_samples(self, n_samples_per_label: int,
+    def get_samples(self, n_samples_per_class: int,
                     random_state: RandomState = None
                     ) -> Tuple[np.ndarray, np.ndarray]:
         """
@@ -302,29 +305,29 @@ class EffectiveFeature(object):
         Notes:
           You might want to flatten the output arrays
 
-        :param n_samples_per_label: samples per label
+        :param n_samples_per_class: number of samples per class
         :param random_state:
         :return:
           * X: np.ndarray
-            samples, shape (n_labels, n_samples_per_label)
+            samples, shape (n_classes, n_samples_per_class)
           * y: np.ndarray
-            labels, shape (n_labels, n_samples_per_label)
+            labels, shape (n_classes, n_samples_per_class)
         """
         if random_state is None:
             random_state = self.random_state
         random_state = check_random_state(random_state)
 
         check_is_fitted(self)
-        # Note: we transposed parameters below to get samples from same label
+        # Note: we transposed parameters below to get samples from same class
         #       next to each other (check tests too), this is less suited for
         #       simple K-fold (without shuffling and stratification)
         X = self.sampling_distribution.rvs(
             loc=self.locations_[:, np.newaxis],
             scale=self.scales_[:, np.newaxis],
-            size=(self.n_labels, n_samples_per_label),
+            size=(self.n_classes, n_samples_per_class),
             random_state=random_state)
-        y = np.repeat(np.arange(self.n_labels)[:, np.newaxis],
-                      n_samples_per_label, axis=1)
+        y = np.repeat(np.arange(self.n_classes)[:, np.newaxis],
+                      n_samples_per_class, axis=1)
         return X, y
 
 
@@ -608,8 +611,8 @@ def make_usefulness(usefulness_scheme: str, min_usefulness: float,
 
 
 def generate_hidden_features(
-        n_labels: int,
-        n_samples_per_label: int,
+        n_classes: int,
+        n_samples_per_class: int,
         n_true_features: int,
         n_fake_features: int,
         min_usefulness: float,
@@ -630,9 +633,9 @@ def generate_hidden_features(
 
     :return:
       * out_features: np.ndarray
-         feature space, shape (n_samples_per_label * n_labels, n_features_out)
+         feature space, shape (n_samples_per_class * n_classes, n_features_out)
       * out_labels: np.ndarray
-         labels, i.e., label ids, shape (n_samples_per_label * n_labels, )
+         labels, i.e., class ids, shape (n_samples_per_class * n_classes, )
       * out_usefulness: np.ndarray
          approximate usefulness of the features, shape (n_features_out, )
       * out_ranges: np.ndarray
@@ -641,14 +644,14 @@ def generate_hidden_features(
     """
     random_state = check_random_state(random_state)
     # todo convert asserts into input validation
-    assert 1 <= n_labels
-    assert 1 <= n_samples_per_label
+    assert 1 <= n_classes
+    assert 1 <= n_samples_per_class
     assert 0 <= n_true_features
     assert 0 <= n_fake_features
     assert 1 <= n_true_features + n_fake_features
     assert 0 < min_usefulness <= max_usefulness <= 1
     features = np.empty(
-        (n_labels, n_samples_per_label, n_true_features + n_fake_features))
+        (n_classes, n_samples_per_class, n_true_features + n_fake_features))
     ranges = np.empty((n_true_features + n_fake_features,))
     usefulness_values = np.concatenate(
         [make_usefulness(usefulness_scheme=usefulness_scheme,
@@ -670,13 +673,13 @@ def generate_hidden_features(
         if 0 < usefulness:
             kwargs['location_sharing_extent'] = location_sharing_extent
         else:
-            kwargs['location_sharing_extent'] = n_labels
+            kwargs['location_sharing_extent'] = n_classes
             kwargs['scale_distribution'] = stats.bernoulli(1)
-        ef = EffectiveFeature(n_labels, **kwargs)
+        ef = EffectiveFeature(n_classes, **kwargs)
         ef.fit()
         ranges[i] = ef.range_
         features[..., i], labels = ef.get_samples(
-            n_samples_per_label,
+            n_samples_per_class,
             random_state=random_state)
     features = features.reshape((-1, features.shape[-1])).round(10)
     labels = labels.reshape((-1,))
@@ -704,9 +707,9 @@ def blend_features(
 
     :return:
       * out_features: np.ndarray
-         feature space, shape (n_samples_per_label * n_labels, n_features_out)
+         feature space, shape (n_samples_per_class * n_classes, n_features_out)
       * out_labels: np.ndarray
-         labels, i.e., label ids, shape (n_samples_per_label * n_labels, )
+         labels, i.e., class ids, shape (n_samples_per_class * n_classes, )
       * out_usefulness: np.ndarray
          usefulness measure of features, shape (n_features_out, )
       * out_ranges: np.ndarray
@@ -757,8 +760,8 @@ def blend_features(
 
 
 def generate_feature_space(
-        n_labels: int = 100,
-        n_samples_per_label: int = 16,
+        n_classes: int = 100,
+        n_samples_per_class: int = 16,
         n_true_features: int = 30,
         n_fake_features: int = 0,
         n_features_out: int = 10000,
@@ -778,19 +781,20 @@ def generate_feature_space(
         noise_distribution: stats.rv_continuous = stats.norm,
         random_state: _RANDOM_STATE_TYPE = 137
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray,
-           np.ndarray, np.ndarray]:
+np.ndarray, np.ndarray]:
     """
     Simulate a large dimensional feature space
 
-    :param n_labels: number of labels (classes) to simulate
-    :param n_samples_per_label: number of samples per label (class)
+    :param n_classes: number of classes (or labels) of the classification 
+      problem
+    :param n_samples_per_class: number of samples per class
     :param n_true_features: number of underlying true hidden features, they are
       meant to be useful features
     :param n_fake_features: number of underlying fake hidden features, they are
       meant to be fixed random noise;
       these features are intended to be not informative but due to their
       consistent values used in out_features they may carry information about
-      the class label; to avoid this either pick 0 or a lot of them
+      the class (or label); to avoid this either pick 0 or a lot of them
     :param n_features_out: number of measured features to be simulated
     :param blending_mode: "linear" simulates measured features using linear
       combination (cf. central limit theorem), "logarithmic" simulates
@@ -804,21 +808,20 @@ def generate_feature_space(
       "exponential" and "longtailed"
     :param tail_power: exponent for "longtailed" usefulness_scheme
     :param location_distribution: distribution type of the characteristic
-      trait of labels (classes), i.e., the envelop of locations for true
-      features
+      trait of classes, i.e., the envelop of locations for true features
     :param scale_distribution: frozen pre-parametrized distribution of
       the amplitude of the sampling noise (uncertainty of reproduction),
-      i.e., the scale of different samples for the same label (class) in true
-      features
+      i.e., the scale of different samples for the same class (or label) in
+      true features
     :param sampling_distribution: distribution type of the uncertainty of
       reproduction, i.e., the noise for different samples from the same
-      label (class) in hidden features
+      class (or label) in hidden features
     :param location_ordering_extent: keep segments of locations of given
       block size together in each feature independently, use -1 to use
       exactly the same location order; making this parameter other than zero
       helps to reduce the new information added by each true feature because
       their information gets more redundant; default: 0
-    :param location_sharing_extent: make locations shared by multiple labels
+    :param location_sharing_extent: make locations shared by multiple classes
       in each feature independently, use 0 to make all locations unique;
       making this parameter other than zero helps to reduce the new
       information added by each true feature because their information gets
@@ -837,16 +840,16 @@ def generate_feature_space(
       default: fixed-seed
     :return:
       * out_features: np.ndarray
-         feature space, shape (n_samples_per_label * n_labels, n_features_out)
+         feature space, shape (n_samples_per_class * n_classes, n_features_out)
       * out_labels: np.ndarray
-         labels, i.e., label ids, shape (n_samples_per_label * n_labels, )
+         labels, i.e., class ids, shape (n_samples_per_class * n_classes, )
       * out_usefulness: np.ndarray
          approximate usefulness of features, shape (n_features_out, )
       * out_names: np.ndarray
          ordinal id of the features, shape (n_features_out, )
       * hidden_features: np.ndarray
          feature space,
-         shape (n_samples_per_label * n_labels, n_hidden_features)
+         shape (n_samples_per_class * n_classes, n_hidden_features)
       * hidden_usefulness: np.ndarray
          approximate usefulness of features, shape (n_hidden_features, )
     """
@@ -854,8 +857,8 @@ def generate_feature_space(
 
     hidden_features, out_labels, hidden_usefulness_values, hidden_ranges = (
         generate_hidden_features(
-            n_labels,
-            n_samples_per_label,
+            n_classes,
+            n_samples_per_class,
             n_true_features,
             n_fake_features,
             min_usefulness,
