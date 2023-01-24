@@ -85,9 +85,12 @@ if __name__ == '__main__':
                    help='maximum number of hidden features taking part in one '
                         'specific output feature',
                    default=10, type=int)
-    p.add_argument('--noise-strength',
-                   help='scaling factor for the observation noise',
-                   default=1., type=float)
+    p.add_argument('--min-noise',
+                   help='minimum noise of output features',
+                   default=0.00, type=float)
+    p.add_argument('--max-noise',
+                   help='maximum noise of output features',
+                   default=1.00, type=float)
     p.add_argument('--store-hidden',
                    help='store the hidden feature space for later analysis',
                    action='store_true')
@@ -118,6 +121,14 @@ if __name__ == '__main__':
         raise ValueError(msg)
     generate_args['count_distribution'] = (
         stats.randint(min_count, max_count + 1))
+    min_noise = generate_args.pop('min_noise')
+    max_noise = generate_args.pop('max_noise')
+    if max_noise < min_noise:
+        msg = ('min_noise must be less or equal than max_noise, got {} and {}'
+               'respectively'.format(min_noise, max_noise))
+        raise ValueError(msg)
+    generate_args['relative_usefulness_content'] = (
+        stats.uniform(1 - max_noise, (1 - min_noise) - (1 - max_noise)))
     (out_features, out_labels, out_usefulness, out_names,
      hidden_features, hidden_usefulness) = (
         generate_feature_space(**generate_args))

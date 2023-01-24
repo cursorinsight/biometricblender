@@ -469,7 +469,7 @@ class NoiseBlender(BaseEstimator, TransformerMixin):
     Class to transform features into a their noisy realization
 
     Notes:
-      Please make sre that the amplitude of the noise distribution is matched
+      Please make sure that the amplitude of the noise distribution is matched
       to the feature values.
 
     :ivar int n_features_in_:
@@ -697,7 +697,6 @@ def blend_features(
         location_sharing_extent: int,
         relative_usefulness_content: stats.rv_continuous,
         noise_distribution: stats.rv_continuous,
-        noise_strength: float,
         random_state: _RANDOM_STATE_TYPE
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray,]:
     """
@@ -745,7 +744,7 @@ def blend_features(
     mixed_usefulness = fb.transform([hidden_usefulness_values],
                                     amplitude_like=True)[0]
     nb = NoiseBlender(noise_distribution=noise_distribution(
-        scale=noise_strength * mixed_ranges / noise_distribution.std()),
+        scale=mixed_ranges / noise_distribution.std()),
         blending_mode=blending_mode,
         random_state=random_state)
     beta = relative_usefulness_content.rvs(size=n_features_out,
@@ -777,7 +776,6 @@ def generate_feature_space(
         count_distribution: stats.rv_discrete = stats.randint(5, 11),
         relative_usefulness_content: stats.rv_continuous = stats.uniform(0, 1),
         noise_distribution: stats.rv_continuous = stats.norm,
-        noise_strength: float = 1.,
         random_state: _RANDOM_STATE_TYPE = 137
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray,
            np.ndarray, np.ndarray]:
@@ -835,7 +833,6 @@ def generate_feature_space(
       given as the part of the output range, 0<=part<1
     :param noise_distribution: distribution type of the additive random noise,
       it is scaled automatically
-    :param noise_strength: scale for the observation noise
     :param random_state: seed or RandomState instance, use None to auto-seed,
       default: fixed-seed
     :return:
@@ -889,7 +886,6 @@ def generate_feature_space(
             location_sharing_extent,
             relative_usefulness_content,
             noise_distribution,
-            noise_strength,
             random_state
         )
     )
