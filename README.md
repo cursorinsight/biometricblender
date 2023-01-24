@@ -140,6 +140,8 @@ Command line options are:
   --max-count MAX_COUNT
                         maximum number of hidden features taking part in one 
                         specific output feature (default: 10)
+  --noise-strength NOISE_STRENGTH
+                        scaling factor for the observation noise (default: 1.0)
   --store-hidden        store the hidden feature space for later analysis
                         (default: False)
   --random-state RANDOM_STATE
