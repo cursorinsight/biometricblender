@@ -48,16 +48,16 @@ def test_transform():
 # EffectiveFeature
 
 def test_get_samples():
-    n_labels = 20
-    n_samples_per_label = 100
+    n_classes = 20
+    n_samples_per_class = 100
 
-    ef = EffectiveFeature(n_labels, 0.2, random_state=137)
+    ef = EffectiveFeature(n_classes, 0.2, random_state=137)
     ef.fit()
 
-    samples, labels = ef.get_samples(n_samples_per_label)
+    samples, labels = ef.get_samples(n_samples_per_class)
 
     assert samples.shape == labels.shape
-    assert samples.shape == (n_labels, n_samples_per_label)
+    assert samples.shape == (n_classes, n_samples_per_class)
 
 
 # FeatureBlender
@@ -115,13 +115,13 @@ def test_generate_feature_space():
         out_features, out_labels, out_usefulness, out_names, _, _ = fs
 
         n_features_out = kw['n_features_out']
-        n_labels = kw['n_labels']
-        n_samples_per_label = kw['n_samples_per_label']
+        n_classes = kw['n_classes']
+        n_samples_per_class = kw['n_samples_per_class']
 
         assert out_features.shape == \
-            (n_samples_per_label * n_labels, n_features_out)
+            (n_samples_per_class * n_classes, n_features_out)
         assert out_labels.shape == \
-            (n_samples_per_label * n_labels,)
+            (n_samples_per_class * n_classes,)
         assert out_usefulness.shape == (n_features_out,)
         assert out_names.shape == (n_features_out,)
 

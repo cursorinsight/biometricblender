@@ -91,54 +91,57 @@ or load by
 Command line options are:
 
 ```
-  --n-labels N_LABELS   identified labels (classes) to simulate (default: 100)
-  --n-samples-per-label N_SAMPLES_PER_LABEL
-                        samples per label (class) (default: 16)
+  --n-classes N_CLASSES
+                        number of classes (or labels) of the classification
+                        problem to simulate (default: 100)
+  --n-samples-per-class N_SAMPLES_PER_CLASS
+                        number of samples per class (default: 16)
   --n-true-features N_TRUE_FEATURES
-                        number of underlying true hidden features, they are 
+                        number of underlying true hidden features, they are
                         meant to be useful features (default: 40)
   --n-fake-features N_FAKE_FEATURES
-                        number of underlying fake hidden features, they are 
+                        number of underlying fake hidden features, they are
                         meant to be fixed random noise (default: 0)
   --min-usefulness MIN_USEFULNESS
-                        minimum usefulness of true hidden features 
-                        (default: 0.5)
+                        minimum usefulness of true hidden features (default:
+                        0.5)
   --max-usefulness MAX_USEFULNESS
-                        maximum usefulness of true hidden features 
-                        (default: 0.95)
+                        maximum usefulness of true hidden features (default:
+                        0.95)
   --usefulness-scheme {linear,exponential,longtailed}
-                        distribution of usefulness in true hidden features 
+                        distribution of usefulness in true hidden features
                         (default: linear)
   --tail-power TAIL_POWER
-                        exponent for longtailed usefulness-scheme 
-                        (default: 1.5)
+                        exponent for longtailed usefulness-scheme (default:
+                        1.5)
   --location-distribution {norm,uniform}
-                        distribution type of the characteristic trait of 
-                        labels (classes), i.e., the envelop of locations 
-                        for true features (default: norm)
+                        distribution type of the characteristic trait of
+                        classes, i.e., the envelop of locations for true
+                        features (default: norm)
   --sampling-distribution {norm,uniform}
-                        distribution type of the uncertainty of reproduction,
-                        i.e., the noise for different samples from the same 
-                        label (class) in hidden features (default: norm)
+                        distribution type of the uncertainty of
+                        reproduction,i.e., the noise for different samples
+                        from the same class (or label) in hidden features
+                        (default: norm)
   --location-ordering-extent LOCATION_ORDERING_EXTENT
-                        keep segments of locations of given block size 
-                        together in each feature independently, use -1 to use 
+                        keep segments of locations of given block size
+                        together in each feature independently, use -1 to use
                         exactly the same location order (default: 0)
   --location-sharing-extent LOCATION_SHARING_EXTENT
-                        make locations shared by multiple labels (classes)
-                        in each feature independently, use 0 to make all 
-                        locations unique (default: 0)
+                        make locations shared by multiple classes in each
+                        feature independently, use 0 to make all locations
+                        unique (default: 0)
   --polynomial          use polynomial mixing of features (default: False)
   --n-features-out N_FEATURES_OUT
-                        number of measured features to be simulated 
-                        (default: 10000)
+                        number of measured features to be simulated (default:
+                        10000)
   --blending-mode {linear,logarithmic}
                         how to simulate measured features (default: linear)
   --min-count MIN_COUNT
-                        minimum number of hidden features taking part in one 
+                        minimum number of hidden features taking part in one
                         specific output feature (default: 5)
   --max-count MAX_COUNT
-                        maximum number of hidden features taking part in one 
+                        maximum number of hidden features taking part in one
                         specific output feature (default: 10)
   --min-noise MIN_NOISE
                         minimum noise of output features (default: 0.0)

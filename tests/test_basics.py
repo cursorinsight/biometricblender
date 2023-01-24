@@ -10,8 +10,8 @@ def test_usage(temppath):
     path = temppath
     args = f"""
             --output {path}
-            --n-labels 10
-            --n-samples-per-label 3
+            --n-classes 10
+            --n-samples-per-class 3
             --n-features-out 100
             """.split()
 

@@ -26,13 +26,13 @@ def forest_decision_feature_importance(
     return counts
 
 
-def feature_space_generator(n_labels=100,
-                            n_samples_per_label=16,
+def feature_space_generator(n_classes=100,
+                            n_samples_per_class=16,
                             n_true_features=9,
                             n_features_out=1013):
 
-    kw = dict(n_labels=n_labels,
-              n_samples_per_label=n_samples_per_label,
+    kw = dict(n_classes=n_classes,
+              n_samples_per_class=n_samples_per_class,
               n_true_features=n_true_features,
               n_features_out=n_features_out,
               min_usefulness=1,
@@ -41,8 +41,8 @@ def feature_space_generator(n_labels=100,
     fs = generate_feature_space(**kw)
     yield 'all useful', kw, fs
 
-    kw = dict(n_labels=n_labels,
-              n_samples_per_label=n_samples_per_label,
+    kw = dict(n_classes=n_classes,
+              n_samples_per_class=n_samples_per_class,
               n_true_features=n_true_features,
               n_features_out=n_features_out,
               min_usefulness=0.1,
@@ -51,16 +51,16 @@ def feature_space_generator(n_labels=100,
     fs = generate_feature_space(**kw)
     yield 'basic', kw, fs
 
-    kw = dict(n_labels=n_labels,
-              n_samples_per_label=n_samples_per_label,
+    kw = dict(n_classes=n_classes,
+              n_samples_per_class=n_samples_per_class,
               n_true_features=n_true_features,
               n_features_out=n_features_out,
               polynomial=True)
     fs = generate_feature_space(**kw)
     yield 'polynomial', kw, fs
 
-    kw = dict(n_labels=n_labels,
-              n_samples_per_label=n_samples_per_label,
+    kw = dict(n_classes=n_classes,
+              n_samples_per_class=n_samples_per_class,
               n_true_features=n_true_features,
               n_features_out=n_features_out,
               relative_usefulness_content=uniform(0.6, 0.4),
@@ -68,8 +68,8 @@ def feature_space_generator(n_labels=100,
     fs = generate_feature_space(**kw)
     yield 'logarithmic', kw, fs
 
-    kw = dict(n_labels=n_labels,
-              n_samples_per_label=n_samples_per_label,
+    kw = dict(n_classes=n_classes,
+              n_samples_per_class=n_samples_per_class,
               n_true_features=n_true_features,
               n_features_out=n_features_out,
               blending_mode='logarithmic',
@@ -77,8 +77,8 @@ def feature_space_generator(n_labels=100,
     fs = generate_feature_space(**kw)
     yield 'noiseless logarithmic', kw, fs
 
-    kw = dict(n_labels=n_labels,
-              n_samples_per_label=n_samples_per_label,
+    kw = dict(n_classes=n_classes,
+              n_samples_per_class=n_samples_per_class,
               n_true_features=n_true_features,
               n_features_out=n_features_out,
               n_fake_features=0,
@@ -87,8 +87,8 @@ def feature_space_generator(n_labels=100,
     fs = generate_feature_space(**kw)
     yield 'true logarithmic', kw, fs
 
-    kw = dict(n_labels=n_labels,
-              n_samples_per_label=n_samples_per_label,
+    kw = dict(n_classes=n_classes,
+              n_samples_per_class=n_samples_per_class,
               n_true_features=n_true_features,
               n_features_out=n_features_out,
               n_fake_features=0,
@@ -97,16 +97,16 @@ def feature_space_generator(n_labels=100,
     fs = generate_feature_space(**kw)
     yield 'pure logarithmic', kw, fs
 
-    kw = dict(n_labels=n_labels,
-              n_samples_per_label=n_samples_per_label,
+    kw = dict(n_classes=n_classes,
+              n_samples_per_class=n_samples_per_class,
               n_true_features=n_true_features,
               n_features_out=n_features_out,
               location_ordering_extent=3)
     fs = generate_feature_space(**kw)
     yield 'ordered', kw, fs
 
-    kw = dict(n_labels=n_labels,
-              n_samples_per_label=n_samples_per_label,
+    kw = dict(n_classes=n_classes,
+              n_samples_per_class=n_samples_per_class,
               n_true_features=n_true_features,
               n_features_out=n_features_out,
               location_sharing_extent=3)
