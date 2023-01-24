@@ -795,7 +795,7 @@ np.ndarray, np.ndarray]:
       these features are intended to be not informative but due to their
       consistent values used in out_features they may carry information about
       the class (or label); to avoid this either pick 0 or a lot of them
-    :param n_features_out: number of measured features to be simulated
+    :param n_features_out: number of visible features to be simulated
     :param blending_mode: "linear" simulates measured features using linear
       combination (cf. central limit theorem), "logarithmic" simulates
       measured features by multiplication (resulting distribution
@@ -840,18 +840,19 @@ np.ndarray, np.ndarray]:
       default: fixed-seed
     :return:
       * out_features: np.ndarray
-         feature space, shape (n_samples_per_class * n_classes, n_features_out)
+         visible feature space,
+         shape (n_samples_per_class * n_classes, n_features_out)
       * out_labels: np.ndarray
          labels, i.e., class ids, shape (n_samples_per_class * n_classes, )
       * out_usefulness: np.ndarray
-         approximate usefulness of features, shape (n_features_out, )
+         approximate usefulness of visible features, shape (n_features_out, )
       * out_names: np.ndarray
          ordinal id of the features, shape (n_features_out, )
       * hidden_features: np.ndarray
-         feature space,
+         hidden feature space, i.e., true and fake features,
          shape (n_samples_per_class * n_classes, n_hidden_features)
       * hidden_usefulness: np.ndarray
-         approximate usefulness of features, shape (n_hidden_features, )
+         approximate usefulness of hidden features, shape (n_hidden_features, )
     """
     random_state = check_random_state(random_state)
 

@@ -131,7 +131,7 @@ Command line options are:
                         unique (default: 0)
   --polynomial          use polynomial mixing of features (default: False)
   --n-features-out N_FEATURES_OUT
-                        number of measured features to be simulated (default:
+                        number of visible features to be simulated (default:
                         10000)
   --blending-mode {linear,logarithmic}
                         how to simulate measured features (default: linear)

@@ -72,7 +72,7 @@ if __name__ == '__main__':
                    help='use polynomial mixing of features',
                    default=False, action='store_true')
     p.add_argument('--n-features-out',
-                   help='number of measured features to be simulated',
+                   help='number of visible features to be simulated',
                    default=10000, type=int)
     p.add_argument('--blending-mode',
                    help='how to simulate measured features',
