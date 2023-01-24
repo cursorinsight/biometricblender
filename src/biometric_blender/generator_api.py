@@ -784,8 +784,8 @@ def generate_feature_space(
     """
     Simulate a large dimensional feature space
 
-    :param n_labels: number of labels to simulate
-    :param n_samples_per_label: number of samples per label
+    :param n_labels: number of labels (classes) to simulate
+    :param n_samples_per_label: number of samples per label (class)
     :param n_true_features: number of underlying true hidden features, they are
       meant to be useful features
     :param n_fake_features: number of underlying fake hidden features, they are
@@ -806,14 +806,15 @@ def generate_feature_space(
       "exponential" and "longtailed"
     :param tail_power: exponent for "longtailed" usefulness_scheme
     :param location_distribution: distribution type of the characteristic
-      trait of labels, i.e., the envelop of locations for true features
+      trait of labels (classes), i.e., the envelop of locations for true
+      features
     :param scale_distribution: frozen pre-parametrized distribution of
       the amplitude of the sampling noise (uncertainty of reproduction),
-      i.e., the scale of different samples for the same label in true
+      i.e., the scale of different samples for the same label (class) in true
       features
     :param sampling_distribution: distribution type of the uncertainty of
       reproduction, i.e., the noise for different samples from the same
-      label in hidden features
+      label (class) in hidden features
     :param location_ordering_extent: keep segments of locations of given
       block size together in each feature independently, use -1 to use
       exactly the same location order; making this parameter other than zero
