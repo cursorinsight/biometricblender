@@ -530,6 +530,7 @@ def plot_pca_components(fn_base: str):
      hidden_features, hidden_usefulness) = data_fs
     pca = PCA(n_components=None)
     pca.fit(out_features, out_labels)
+    ratio = pca.explained_variance_ratio_
     explained = pca.explained_variance_
     noise = pca.noise_variance_
     fig, ax = plt.subplots(figsize=(2, 1.5))
@@ -540,6 +541,14 @@ def plot_pca_components(fn_base: str):
     ax.set_xlabel('n_features')
     ax.legend(loc='upper right')
     fig.savefig(f'fig/pca_{fn_base}.pdf', bbox_inches='tight')
+    fig, ax = plt.subplots(figsize=(2, 1.5))
+    ax.plot(np.arange(len(ratio)) + 1, ratio, color='k',
+            label='r.explain')
+    ax.axhline(noise, linestyle='--', color='k', label='noise')
+    ax.set_ylabel('variance')
+    ax.set_xlabel('n_features')
+    ax.legend(loc='upper right')
+    fig.savefig(f'fig/pca_r_{fn_base}.pdf', bbox_inches='tight')
 
 
 # # #  Figures for the targeted usefulness of hidden features  # # #
