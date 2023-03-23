@@ -35,7 +35,7 @@ def test_get_block_sizes():
         assert len(segs) == total // par
 
 
-def test_transform():
+def test_transform_shuffle():
     rng = check_random_state(137)
 
     total = 1023
@@ -62,7 +62,7 @@ def test_get_samples():
 
 # FeatureBlender
 
-def test_transform():
+def test_transform_blender():
     data = np.random.uniform(0, 1, size=(100, 11))
 
     n_features_out = 13

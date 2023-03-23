@@ -11,8 +11,7 @@ import h5py as hdf
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter, FileType
 from datetime import datetime
 
-from .generator_api import FeatureBlender, NoiseBlender, \
-    generate_feature_space, stats
+from .generator_api import generate_feature_space, stats
 
 
 COMMAND = "biometric_blender"
