@@ -155,3 +155,37 @@ Command line options are:
 ```
 
 For more  details, run `python -m biometric_blender --help`.
+
+## Citation
+
+If you use BiometricBlender in scientific research, please cite [our
+publication](https://doi.org/10.1016/j.softx.2023.101366) as follows:
+
+```
+Marcell Stippinger, Dávid Hanák, Marcell T. Kurbucz, Gergely Hanczár, Olivér M. Törteli, Zoltán Somogyvári,
+BiometricBlender: Ultra-high dimensional, multi-class synthetic data generator to imitate biometric feature space,
+SoftwareX,
+Volume 22,
+2023,
+101366,
+ISSN 2352-7110,
+https://doi.org/10.1016/j.softx.2023.101366.
+```
+
+Or, using BiBTex:
+
+```bibtex
+@article{STIPPINGER2023101366,
+  title = {BiometricBlender: Ultra-high dimensional, multi-class synthetic data generator to imitate biometric feature space},
+  journal = {SoftwareX},
+  volume = {22},
+  pages = {101366},
+  year = {2023},
+  issn = {2352-7110},
+  doi = {https://doi.org/10.1016/j.softx.2023.101366},
+  url = {https://www.sciencedirect.com/science/article/pii/S2352711023000626},
+  author = {Marcell Stippinger and Dávid Hanák and Marcell T. Kurbucz and Gergely Hanczár and Olivér M. Törteli and Zoltán Somogyvári},
+  keywords = {Dataset generator, Biometrics, Feature screening, Ultra-high dimensionality, Multi-class classification},
+  abstract = {The lack of freely available (real-life or synthetic) high or ultra-high dimensional, multi-class datasets may hamper the rapidly growing research on feature screening, especially in the field of biometrics, where the usage of such datasets is common. This paper reports a Python package called BiometricBlender, which is an ultra-high dimensional, multi-class synthetic data generator to benchmark a wide range of feature screening methods. During the data generation process, the overall usefulness and the intercorrelations of blended features can be controlled by the user, thus the synthetic feature space is able to imitate the key properties of a real biometric dataset.}
+}
+```
