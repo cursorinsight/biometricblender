@@ -63,7 +63,7 @@ def get_data_on_the_fly(
 
 
 def make_data(
-    fn_base: str = 'screening'
+        fn_base: str = 'screening'
 ):
     """
     Write some test data: use the default configuration
@@ -192,9 +192,9 @@ def score_classifiers(fn_base: Union[str, dict] = 'screening',
         data_fn = get_data_on_the_fly(**fn_base)
         output_fn = output_fn or 'fig/onthefly_scores.csv'
     for (red_name, red_obj, red_n), \
-        (data_fn, data_kind, data_kw, data_fs) in tqdm(
-            iterprod(get_reduction(n_components=None), data_fn),
-            desc='data&reduction'):
+            (data_fn, data_kind, data_kw, data_fs) in tqdm(
+        iterprod(get_reduction(n_components=None), data_fn),
+        desc='data&reduction'):
         (out_features, out_labels, out_usefulness, out_names,
          hidden_features, hidden_usefulness) = data_fs
         simplified_features = red_obj.fit_transform(
@@ -289,10 +289,10 @@ def score_gridsearch_classifiers(
     else:
         data = get_data_on_the_fly(**fn_base)
         output_fn = output_fn or 'fig/onthefly_gridsearch_scores.csv'
-    for (red_name, red_obj, red_n),\
-        (data_fn, data_kind, data_kw, data_fs) in tqdm(
-            iterprod(get_reduction(n_components=n_components), data),
-            desc='data&reduction'):
+    for (red_name, red_obj, red_n), \
+            (data_fn, data_kind, data_kw, data_fs) in tqdm(
+        iterprod(get_reduction(n_components=n_components), data),
+        desc='data&reduction'):
         (out_features, out_labels, out_usefulness, out_names,
          hidden_features, hidden_usefulness) = data_fs
         if (red_n is not None) and (out_features.shape[1] < red_n):
@@ -603,7 +603,7 @@ def plot_1d_locations(
 
 
 def plot_2d_realizations(ax: plt.Axes, fs: np.ndarray, labels: np.ndarray):
-    df = pd.DataFrame(fs,
+    df = pd.DataFrame(np.take(fs, [0, 1], axis=1),
                       index=pd.Index(labels, name='labels'),
                       columns=['x', 'y'])
     for i, data in df.groupby('labels'):
@@ -614,13 +614,15 @@ def plot_2d_realizations(ax: plt.Axes, fs: np.ndarray, labels: np.ndarray):
 def make_features_by_usefulness(
         seed: int = 137,
         usefulness: float = 0.1,
+        n_true_features: int = 2,
 ) -> Tuple[np.ndarray, np.ndarray, List[EffectiveFeature]]:
     from scipy import stats
     from biometric_blender import generator_api
     rs = check_random_state(seed)
     with intercept_ef() as instances:
         fs, labels, _, _ = generator_api.generate_hidden_features(
-            10, 16, 2, 0, usefulness, usefulness, 'linear', None, stats.norm,
+            10, 16, n_true_features, 0, usefulness, usefulness, 'linear', None,
+            stats.norm,
             stats.uniform(0.5, 1.5), stats.norm, 2, 2, rs)
     return fs, labels, instances
 
@@ -693,9 +695,62 @@ def make_figure_usefulness_demo(seed=137):
     fig.savefig(f'fig/usefulness-autozoom.pdf', bbox_inches='tight')
 
 
+def make_figure_usefulness_and_tsne_demo(n_true_features=5, seed=2023):
+    """
+    Show the effect of usefulness on two features and the separability on tSNE
+    (save the figure presented in the screening paper)
+    """
+    from sklearn.manifold import TSNE
+
+    def get_mnl_top():
+        return MaxNLocator(nbins=1, integer=True,
+                           symmetric=False, min_n_ticks=2)
+
+    def get_mnl_bottom():
+        return MaxNLocator(nbins=2, integer=True,
+                           symmetric=True, min_n_ticks=3)
+
+    fig, ax = plt.subplots(3, 3, figsize=(5, 5),
+                           # gridspec_kw={'wspace': 0.3, 'hspace': 0.25},
+                           sharex=False, sharey=False, layout="constrained")
+    for i, usefulness in enumerate([0.2, 0.4, 0.6]):
+        fs, labels, instances = make_features_by_usefulness(
+            seed=seed, usefulness=usefulness, n_true_features=n_true_features,
+        )
+        try:
+            # mpl >= 3.3
+            ax[0, i].sharex(ax[1, i])
+        except AttributeError:
+            # old version
+            ax[0, i].get_shared_x_axes().join(ax[0, i], ax[1, i])
+
+        plot_1d_locations(ax[0, i], instances[0],
+                          reverse=False, normalize=False)
+        plot_2d_realizations(ax[1, i], fs, labels)
+        repr = TSNE().fit_transform(fs)
+        plot_2d_realizations(ax[2, i], repr, labels)
+        ax[0, i].update_datalim([[0, 0], [0, 1]])
+        ax[0, i].yaxis.set_major_locator(get_mnl_top())
+        ax[1, i].xaxis.set_major_locator(get_mnl_bottom())
+        ax[1, i].yaxis.set_major_locator(get_mnl_bottom())
+        ax[2, i].xaxis.set_major_locator(get_mnl_bottom())
+        ax[2, i].yaxis.set_major_locator(get_mnl_bottom())
+        ax[0, i].set_title(f'usefulness={usefulness}')
+    ax[0, 0].set_ylabel('pdf of A')
+    ax[1, 0].set_xlabel('feature A')
+    ax[1, 0].set_ylabel('feature B')
+    ax[2, 0].set_xlabel('component 1')
+    ax[2, 0].set_ylabel('component 2')
+    fig.align_ylabels(ax[:, 0])
+
+    fig.savefig(f'fig/tsne-{n_true_features}.png', bbox_inches='tight')
+    fig.savefig(f'fig/tsne-{n_true_features}.pdf', bbox_inches='tight')
+
+
 # # #  Entry point  # # #
 
-def main(usefulness_demo: bool,
+def main(tsne_demo: bool,
+         usefulness_demo: bool,
          fn_base: str,
          *,
          generate: bool = False,
@@ -739,10 +794,17 @@ def main(usefulness_demo: bool,
         make_slides_usefulness_demo()
         make_figure_usefulness_demo()
 
+    if tsne_demo:
+        make_figure_usefulness_and_tsne_demo(2)
+        make_figure_usefulness_and_tsne_demo(5)
+        make_figure_usefulness_and_tsne_demo(10)
+        make_figure_usefulness_and_tsne_demo(50)
+
 
 def cli():
     import argparse
     parser = argparse.ArgumentParser()
+    parser.add_argument('--tsne-demo', action='store_true')
     parser.add_argument('--usefulness-demo', action='store_true')
     parser.add_argument('--generate', action='store_true')
     parser.add_argument('--gridsearch', action='store_true')
@@ -751,7 +813,7 @@ def cli():
     parser.add_argument('--importances-fn', type=str, default=None)
     parser.add_argument('--output-fn', type=str, default=None)  # screening!
     args = parser.parse_args()
-    main(usefulness_demo=args.usefulness_demo,
+    main(tsne_demo=args.tsne_demo, usefulness_demo=args.usefulness_demo,
          generate=args.generate, pca=args.pca, gridsearch=args.gridsearch,
          fn_base=args.fn_base, importances_fn=args.importances_fn,
          output_fn=args.output_fn)
