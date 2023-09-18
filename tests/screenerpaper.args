@@ -1,0 +1,13 @@
+--n-classes=100
+--n-samples-per-class=64
+--n-true-features=100
+--n-fake-features=300
+--min-usefulness=0.5
+--max-usefulness=1
+--location-sharing-extent=50
+--location-ordering-extent=20
+--n-features-out=10000
+--blending-mode=logarithmic
+--min-count=4
+--max-count=8
+--random-state=137

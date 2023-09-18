@@ -622,8 +622,7 @@ def make_features_by_usefulness(
     with intercept_ef() as instances:
         fs, labels, _, _ = generator_api.generate_hidden_features(
             10, 16, n_true_features, 0, usefulness, usefulness, 'linear', None,
-            stats.norm,
-            stats.uniform(0.5, 1.5), stats.norm, 2, 2, rs)
+            stats.norm, stats.uniform(0.5, 1.5), stats.norm, 2, 2, rs)
     return fs, labels, instances
 
 
@@ -695,12 +694,14 @@ def make_figure_usefulness_demo(seed=137):
     fig.savefig(f'fig/usefulness-autozoom.pdf', bbox_inches='tight')
 
 
-def make_figure_usefulness_and_tsne_demo(n_true_features=5, seed=2023):
+def make_figure_usefulness_and_tsne_demo(
+        n_true_features=5, n_features_out=100, blending_mode='logarithmic', seed=2023):
     """
     Show the effect of usefulness on two features and the separability on tSNE
     (save the figure presented in the screening paper)
     """
     from sklearn.manifold import TSNE
+    from biometric_blender import generator_api
 
     def get_mnl_top():
         return MaxNLocator(nbins=1, integer=True,
@@ -710,13 +711,23 @@ def make_figure_usefulness_and_tsne_demo(n_true_features=5, seed=2023):
         return MaxNLocator(nbins=2, integer=True,
                            symmetric=True, min_n_ticks=3)
 
-    fig, ax = plt.subplots(3, 3, figsize=(5, 5),
+    n_rows = 4 if n_features_out else 3
+    height = 6.5 if n_features_out else 5
+    fig, ax = plt.subplots(n_rows, 3, figsize=(5, height),
                            # gridspec_kw={'wspace': 0.3, 'hspace': 0.25},
                            sharex=False, sharey=False, layout="constrained")
     for i, usefulness in enumerate([0.2, 0.4, 0.6]):
         fs, labels, instances = make_features_by_usefulness(
             seed=seed, usefulness=usefulness, n_true_features=n_true_features,
         )
+        if n_features_out:
+            rs = check_random_state(seed)
+            (out_features, out_labels, _, _, _, _
+             ) = generator_api.generate_feature_space(
+                10, 16, n_true_features, 0, n_features_out, usefulness, usefulness, 'linear',
+                None,
+                stats.norm, stats.uniform(0.5, 1.5), stats.norm, 2, 2,
+                blending_mode=blending_mode, random_state=rs)
         try:
             # mpl >= 3.3
             ax[0, i].sharex(ax[1, i])
@@ -729,22 +740,34 @@ def make_figure_usefulness_and_tsne_demo(n_true_features=5, seed=2023):
         plot_2d_realizations(ax[1, i], fs, labels)
         repr = TSNE().fit_transform(fs)
         plot_2d_realizations(ax[2, i], repr, labels)
+        out_repr = TSNE().fit_transform(out_features)
+        plot_2d_realizations(ax[3, i], out_repr, out_labels)
         ax[0, i].update_datalim([[0, 0], [0, 1]])
         ax[0, i].yaxis.set_major_locator(get_mnl_top())
         ax[1, i].xaxis.set_major_locator(get_mnl_bottom())
         ax[1, i].yaxis.set_major_locator(get_mnl_bottom())
         ax[2, i].xaxis.set_major_locator(get_mnl_bottom())
         ax[2, i].yaxis.set_major_locator(get_mnl_bottom())
+        if n_features_out:
+            ax[3, i].xaxis.set_major_locator(get_mnl_bottom())
+            ax[3, i].yaxis.set_major_locator(get_mnl_bottom())
         ax[0, i].set_title(f'usefulness={usefulness}')
     ax[0, 0].set_ylabel('pdf of A')
     ax[1, 0].set_xlabel('feature A')
     ax[1, 0].set_ylabel('feature B')
     ax[2, 0].set_xlabel('component 1')
     ax[2, 0].set_ylabel('component 2')
+    if n_features_out:
+        ax[3, 0].set_xlabel('component 1')
+        ax[3, 0].set_ylabel('component 2')
+    names = 'abcdefghijklmnopqrstuvwxyz'
+    for a, s in zip(ax.ravel(), names):
+        a.text(0.02, 0.98, f'{s})', horizontalalignment='left',
+               verticalalignment='top', transform=a.transAxes)
     fig.align_ylabels(ax[:, 0])
 
-    fig.savefig(f'fig/tsne-{n_true_features}.png', bbox_inches='tight')
-    fig.savefig(f'fig/tsne-{n_true_features}.pdf', bbox_inches='tight')
+    fig.savefig(f'fig/tsne-{n_true_features}-{blending_mode}.png', bbox_inches='tight')
+    fig.savefig(f'fig/tsne-{n_true_features}-{blending_mode}.pdf', bbox_inches='tight')
 
 
 # # #  Entry point  # # #
@@ -795,10 +818,14 @@ def main(tsne_demo: bool,
         make_figure_usefulness_demo()
 
     if tsne_demo:
-        make_figure_usefulness_and_tsne_demo(2)
-        make_figure_usefulness_and_tsne_demo(5)
-        make_figure_usefulness_and_tsne_demo(10)
-        make_figure_usefulness_and_tsne_demo(50)
+        make_figure_usefulness_and_tsne_demo(2, blending_mode='linear')
+        make_figure_usefulness_and_tsne_demo(5, blending_mode='linear')
+        make_figure_usefulness_and_tsne_demo(10, blending_mode='linear')
+        make_figure_usefulness_and_tsne_demo(50, blending_mode='linear')
+        make_figure_usefulness_and_tsne_demo(2, blending_mode='logarithmic')
+        make_figure_usefulness_and_tsne_demo(5, blending_mode='logarithmic')
+        make_figure_usefulness_and_tsne_demo(10, blending_mode='logarithmic')
+        make_figure_usefulness_and_tsne_demo(50, blending_mode='logarithmic')
 
 
 def cli():
